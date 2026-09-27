@@ -4,4 +4,5 @@ Golden-reference software DSP (DDC/FIR/decimate/integrate/threshold), numpy. Pha
 
 - `ddc` — digital downconversion (software NCO mixer)
 - `design_fir_lowpass` / `apply_fir` — windowed-sinc low-pass FIR (unity DC gain)
-- `decimate` — keep-every-Mth sample (filter separately); integrate/threshold follow later.
+- `decimate` — keep-every-Mth sample (filter separately)
+- `integrate` — complex sum over an accumulation window; threshold follows later.

@@ -45,7 +45,7 @@ threshold in numpy/scipy, as the reference the HDL must match bit-for-bit-equiva
 - [X] Digital downconversion (mixing with reference NCO in software)
 - [X] FIR low-pass design + implementation
 - [X] Decimation
-- [ ] Integration/accumulation window
+- [X] Integration/accumulation window
 - [ ] Threshold-based state discrimination (simple, refined in Phase 8)
 - [ ] Feed Phase 1 output through this pipeline end-to-end; recover state with reasonable
       fidelity on noiseless input
