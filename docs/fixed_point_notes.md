@@ -52,6 +52,14 @@ Verified against: `dsp_ref/fixtures/noiseless.npz` + `noisy.npz` baseband magnit
 (post-DDC float \|IQ\| ≤ ~1.0); intermediate compare optional. End-to-end tolerance
 owned by top-level (≤ 1.0 on integrated I/Q; decision exact).
 
+Phase-3 sim ports (module TB / future AXI-Stream wrapper):
+`clk`, `rst_n` (active-low); `in_valid`; `in_i`/`in_q` signed 16-bit Q1.14;
+`phase_inc`/`phase0` unsigned 32-bit (`phase_inc = round(f_lo/fs·2³²)`,
+`phase0_word = round(phase0_rad/(2π)·2³²)` from fixture); `out_valid`;
+`out_i`/`out_q` signed 16-bit Q1.14. One complex sample per clock when `in_valid`.
+Per-sample module-TB compare (vs quantized `dsp_ref.ddc` of fixture IF): absolute
+error ≤ **4 LSB** on I and on Q after the DUT pipeline latency / first `out_valid`.
+
 ---
 
 ## fir

@@ -1,0 +1,6 @@
+# DDC TB vectors -- regenerated from Phase 2 NPZ via dsp_ref.ddc
+# Q1.14 scale=2^14, tol_lsb=4
+# case n_samples phase_inc phase0 source
+noiseless_s0 4096 0x1999999a 0x00000000 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noiseless_s1 4096 0x1999999a 0x00000000 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noisy 4096 0x1999999a 0x00000000 python/cryocontrol/dsp_ref/fixtures/noisy.npz
