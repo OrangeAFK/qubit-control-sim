@@ -15,5 +15,10 @@ See [`fir/`](fir/) for `tb_fir.sv`, fixture export script, and run instructions
 ## Phase 3 — Integration / accumulation
 
 See [`integration/`](integration/) for `tb_integration.sv`, fixture export
-script, and run instructions (`hdl/vivado/sim_integration.tcl`). TB-only until
-human review; `hdl/rtl/integration/integration.v` is an empty shell.
+script, and run instructions (`hdl/vivado/sim_integration.tcl`).
+
+## Phase 3 — State discrimination / threshold
+
+See [`state_discrim/`](state_discrim/) for `tb_state_discrim.sv`, fixture export
+script, and run instructions (`hdl/vivado/sim_state_discrim.tcl`). TB-only until
+human review; `hdl/rtl/state_discrim/state_discrim.v` is an empty shell.

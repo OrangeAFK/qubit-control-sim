@@ -8,13 +8,16 @@ Non-project-mode TCL build/synthesis/report-generation scripts.
 |--------|---------|
 | `sim_ddc.tcl` | xsim compile/elaborate/run for `hdl/tb/ddc/tb_ddc.sv` |
 | `sim_fir.tcl` | xsim compile/elaborate/run for `hdl/tb/fir/tb_fir.sv` |
+| `sim_integration.tcl` | xsim for `hdl/tb/integration/tb_integration.sv` |
+| `sim_state_discrim.tcl` | xsim for `hdl/tb/state_discrim/tb_state_discrim.sv` |
 
 ```bash
 vivado -mode batch -source hdl/vivado/sim_ddc.tcl
 vivado -mode batch -source hdl/vivado/sim_fir.tcl
+vivado -mode batch -source hdl/vivado/sim_integration.tcl
+vivado -mode batch -source hdl/vivado/sim_state_discrim.tcl
 ```
 
 Requires Vivado `xvlog`/`xelab`/`xsim` on `PATH` (source Vivado `settings64`).
-Vectors: run `python hdl/tb/ddc/export_fixtures.py` or
-`python hdl/tb/fir/export_fixtures.py` first if the matching `vectors/` dir
-is missing.
+Vectors: run the matching `python hdl/tb/<module>/export_fixtures.py` first if
+the `vectors/` dir is missing.

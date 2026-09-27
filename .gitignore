@@ -36,5 +36,6 @@ xsim.dir/
 xsim_ddc/
 xsim_fir/
 xsim_integration/
+xsim_state_discrim/
 .Xil/
 hd_visual/

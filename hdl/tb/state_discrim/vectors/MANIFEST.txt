@@ -1,0 +1,8 @@
+# State-discrim TB vectors -- regenerated from Phase 2 NPZ
+# stimulus = quantize_Q12.14(fixture output_iq_*)
+# expected = fixture decision_* (bit-exact vs Re(iq_q) >= threshold_q)
+# threshold_float=608.0829560623529 threshold_q1214=9962831
+# case in_i in_q exp_decision source
+noiseless_s0 3328918 0 0 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noiseless_s1 16596745 -796733 1 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noisy 3336964 4584 0 python/cryocontrol/dsp_ref/fixtures/noisy.npz
