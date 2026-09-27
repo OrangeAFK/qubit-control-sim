@@ -1,0 +1,13 @@
+---
+description: HDL TDD, golden fixtures, and human review gates
+globs: hdl/**/*,docs/fixed_point_notes.md,docs/reports/**
+alwaysApply: false
+---
+
+# HDL
+
+1. Document Q-format in `docs/fixed_point_notes.md` **before** writing RTL.
+2. Write the testbench **first**. Stop. Do not write the DUT until the human has reviewed the TB.
+3. Compare against **checked-in fixture vectors** from Phase 2 (under the fixtures path documented in PLAN.md / Phase 2 acceptance), not a prose description of expected behavior.
+4. A testbench the same agent also wrote is not trusted alone — human review of TB logic (reset, clocks, stimulus, compare window) is required before RTL.
+5. Synthesis / timing / hardware reports are human-run checkpoints. Author TCL only; never invent report contents or claim success without pasted logs.

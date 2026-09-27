@@ -26,6 +26,32 @@ stays true.
   the PR that merges after acceptance criteria are demonstrated (test output, plot, or
   report present in the repo).
 
+## Cursor / agent session ops
+
+These are operational constraints for Composer/Agent sessions (also mirrored in
+`.cursor/rules/`). They complement the workflow above; they do not replace it.
+
+- **One phase per session.** Start a new chat for each PLAN.md phase. Paste that
+  phase's task list into the opening prompt — do not say "continue the project" and
+  let the agent freestyle across phases.
+- **One atomic task at a time.** Finish the current task's test before starting the
+  next. Prefer stopping after each green test rather than implementing a whole phase
+  in one go.
+- **Commit after every green test**, not after every phase. Small commits let you
+  `git reset` to the last known-good state if the agent drifts. Unless the human
+  explicitly asks for a commit, stop after the green test and wait.
+- **HDL: human reviews the testbench before RTL.** For every RTL module, the agent
+  writes the testbench first and stops. Do not implement the DUT until the human has
+  eyeballed TB logic (reset, clocks, stimulus, compare window). Never treat a
+  same-session TB+DUT pair as self-validating.
+- **Golden fixtures, not prose.** For numeric / HDL-vs-reference work (especially
+  Phase 3), feed checked-in Phase 2 output vectors as fixture files. Do not rely on a
+  textual description of expected behavior — agents hallucinate "close enough"
+  fixed-point results otherwise.
+- **Vivado / hardware are manual checkpoints.** The agent may write TCL and testbenches;
+  the human runs synthesis, bitstream, and board bring-up and pastes back the real
+  report or error. Never invent or assume synthesis/hardware success.
+
 ## Test-driven development (required)
 
 For every atomic task in PLAN.md:
@@ -51,6 +77,8 @@ done, regardless of whether it synthesizes.
 - Verilog or SystemVerilog, one module per file, filename matches module name.
 - Testbenches in `hdl/tb/`, one per RTL module minimum, plus top-level chain testbenches
   where PLAN.md calls for them (e.g. Phase 3's end-to-end readout-chain testbench).
+- Write each testbench before its DUT; pause for human review of the TB before
+  implementing the module (see Cursor / agent session ops).
 - Default simulator: whatever ships with your Vivado install (xsim), run via the
   non-project TCL flow in `hdl/vivado/`. If you're set up with a different
   simulator/flow (e.g. Icarus + cocotb), that's fine — just record the choice here and

@@ -1,0 +1,14 @@
+---
+description: Project workflow pointers — read before any task
+alwaysApply: true
+---
+
+# Cryocontrol agent workflow
+
+Before starting work: read `AGENTS.md`, `ARCHITECTURE.md`, and the **current phase only** in `PLAN.md`.
+
+- Work **one** PLAN.md atomic task at a time. Do not start the next task until that task's test passes.
+- Do **not** mark a PLAN.md checkbox done without a demonstrated passing test (output, plot, or report in the repo).
+- Prefer a **new Agent/Composer session per PLAN.md phase**. Do not freestyle across phases from "continue the project."
+- After each green test for an atomic task: stop and wait for commit instructions (or commit if asked). Do not batch a whole phase into one commit.
+- Never claim Vivado synthesis, bitstream, or on-hardware bring-up succeeded unless the human pasted the real report/log. Write TCL; do not invent results.

@@ -49,6 +49,9 @@ threshold in numpy/scipy, as the reference the HDL must match bit-for-bit-equiva
 - [ ] Threshold-based state discrimination (simple, refined in Phase 8)
 - [ ] Feed Phase 1 output through this pipeline end-to-end; recover state with reasonable
       fidelity on noiseless input
+- [ ] Export golden I/O vectors (noiseless + one noisy case) as checked-in fixture files
+      under `python/cryocontrol/dsp_ref/fixtures/` (or equivalent path documented in the
+      module README) for Phase 3 HDL testbenches to replay bit-exact / within tolerance
 
 **Acceptance criteria**
 - [ ] `pytest python/tests/dsp_ref/` passes
@@ -56,6 +59,7 @@ threshold in numpy/scipy, as the reference the HDL must match bit-for-bit-equiva
       correctly close to 100% of the time
 - [ ] This pipeline's I/O (input IQ stream, output I/Q + decision) is documented as the
       reference the HDL testbenches will replay against
+- [ ] Golden fixture files are checked in and loadable by tests (not described only in prose)
 
 ---
 
@@ -71,13 +75,15 @@ verified in simulation against Phase 2's golden reference — no board yet.
 - [ ] FIR module + testbench
 - [ ] Integration/accumulation module + testbench
 - [ ] Threshold/state-discrimination module + testbench
-- [ ] Top-level readout-chain testbench: feed Phase 2's exact test vectors in, compare
-      HDL output to golden reference within documented fixed-point tolerance
+- [ ] Top-level readout-chain testbench: feed Phase 2's checked-in fixture vectors in
+      (not a regenerated-from-description proxy), compare HDL output to golden reference
+      within documented fixed-point tolerance
 
 **Acceptance criteria**
-- [ ] Every module has a passing testbench (simulator: see AGENTS.md)
-- [ ] Top-level chain simulation output matches the Phase 2 golden reference within the
-      documented tolerance, for at least the noiseless case and one noisy case
+- [ ] Every module has a passing testbench (simulator: see AGENTS.md); each TB was
+      human-reviewed before its DUT was written
+- [ ] Top-level chain simulation output matches the Phase 2 golden **fixture files**
+      within the documented tolerance, for at least the noiseless case and one noisy case
 - [ ] `docs/fixed_point_notes.md` has an entry for every module in this phase
 
 ---
