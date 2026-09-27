@@ -69,7 +69,7 @@ threshold in numpy/scipy, as the reference the HDL must match bit-for-bit-equiva
 verified in simulation against Phase 2's golden reference — no board yet.
 
 **Tasks**
-- [ ] Fix the numeric format (Q-format) for this chain; write the decision + rationale
+- [x] Fix the numeric format (Q-format) for this chain; write the decision + rationale
       to `docs/fixed_point_notes.md` before writing RTL
 - [ ] DDC module + testbench
 - [ ] FIR module + testbench
