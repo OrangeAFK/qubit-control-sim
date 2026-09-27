@@ -72,7 +72,7 @@ verified in simulation against Phase 2's golden reference — no board yet.
 - [x] Fix the numeric format (Q-format) for this chain; write the decision + rationale
       to `docs/fixed_point_notes.md` before writing RTL
 - [x] DDC module + testbench
-- [ ] FIR module + testbench
+- [x] FIR module + testbench
 - [ ] Integration/accumulation module + testbench
 - [ ] Threshold/state-discrimination module + testbench
 - [ ] Top-level readout-chain testbench: feed Phase 2's checked-in fixture vectors in
