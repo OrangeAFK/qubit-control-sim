@@ -74,7 +74,7 @@ verified in simulation against Phase 2's golden reference — no board yet.
 - [x] DDC module + testbench
 - [x] FIR module + testbench
 - [x] Integration/accumulation module + testbench
-- [ ] Threshold/state-discrimination module + testbench
+- [x] Threshold/state-discrimination module + testbench
 - [ ] Top-level readout-chain testbench: feed Phase 2's checked-in fixture vectors in
       (not a regenerated-from-description proxy), compare HDL output to golden reference
       within documented fixed-point tolerance
