@@ -83,8 +83,19 @@ module tb_ddc;
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-  function automatic string vec_path(input string case_name, input string suffix);
-    return {vec_dir, "/", case_name, "_", suffix, ".mem"};
+  // xsim (Vivado 2025.1) corrupts `localparam string NAME [0:N]` from the
+  // included svh; resolve case names here so $readmemh paths are real.
+  function automatic string case_name(input int idx);
+    case (idx)
+      0: case_name = "noiseless_s0";
+      1: case_name = "noiseless_s1";
+      2: case_name = "noisy";
+      default: case_name = "UNKNOWN";
+    endcase
+  endfunction
+
+  function automatic string vec_path(input string cname, input string suffix);
+    return {vec_dir, "/", cname, "_", suffix, ".mem"};
   endfunction
 
   task automatic load_case(input string case_name);
@@ -219,7 +230,7 @@ module tb_ddc;
              DDC_N_SAMPLES, DDC_N_CASES, DDC_TOL_LSB, DDC_PHASE_INC, DDC_PHASE0);
 
     for (c = 0; c < DDC_N_CASES; c++) begin
-      run_case(DDC_CASE_NAMES[c], case_errs);
+      run_case(case_name(c), case_errs);
       if (case_errs != 0)
         failures++;
     end

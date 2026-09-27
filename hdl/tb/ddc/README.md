@@ -1,4 +1,4 @@
-# DDC testbench (Phase 3) — TB-only; human review before real RTL
+# DDC testbench (Phase 3)
 
 Stimulus and expected vectors are **derived from checked-in Phase 2 fixtures**
 (`python/cryocontrol/dsp_ref/fixtures/{noiseless,noisy}.npz`), not invented in the TB.
@@ -10,7 +10,7 @@ Stimulus and expected vectors are **derived from checked-in Phase 2 fixtures**
 | `tb_ddc.sv` | Module testbench (reset, 100 MHz clk, stimulus, compare window) |
 | `export_fixtures.py` | NPZ → Q1.14 `$readmemh` hex + `vectors/ddc_params.svh` |
 | `vectors/` | Generated mem files + params (regenerate via export script) |
-| `../rtl/ddc/ddc.v` | **Empty shell only** (NOT the implementation) so xsim can elaborate |
+| `../rtl/ddc/ddc.v` | DUT (NCO mixer); see `hdl/rtl/ddc/README.md` |
 
 ## Regenerate vectors
 
@@ -31,6 +31,7 @@ Source Vivado settings, then from repo root::
 vivado -mode batch -source hdl/vivado/sim_ddc.tcl
 ```
 
-With the empty shell, expect a **TIMEOUT** (no `out_valid`) — that is the intentional
-fail-before-DUT. Replace `hdl/rtl/ddc/ddc.v` with real RTL after this TB is reviewed;
-do not treat the shell as the DDC implementation.
+Expect `=== tb_ddc: ALL CASES PASSED ===` within `DDC_TOL_LSB`.
+
+Note: xsim 2025.1 corrupts `localparam string` arrays from `ddc_params.svh`;
+`tb_ddc.sv` resolves case names via `case_name()` instead of `DDC_CASE_NAMES`.

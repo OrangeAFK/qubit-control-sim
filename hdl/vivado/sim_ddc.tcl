@@ -13,9 +13,7 @@
 #   # after sourcing Vivado settings
 #   tclsh hdl/vivado/sim_ddc.tcl
 #
-# Expected with the empty shell at hdl/rtl/ddc/ddc.v:
-#   elaboration succeeds; simulation FAILs with TIMEOUT (no out_valid).
-# After real DDC RTL replaces the shell, this should PASS within TOL_LSB.
+# Expected with real DDC RTL: ALL CASES PASSED (within DDC_TOL_LSB).
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo_root  [file normalize [file join $script_dir .. ..]]
@@ -49,9 +47,11 @@ foreach leftover {xsim.dir xvlog.pb xelab.pb xsim_*.jou xsim_*.log} {
   catch {file delete -force {*}[glob -nocomplain $leftover]}
 }
 
+set rtl_ddc_dir [file join $repo_root hdl rtl ddc]
+
 puts "=== xvlog ==="
 set rc [catch {
-  exec xvlog -sv -i $vec_dir $rtl_ddc $tb_sv >@stdout 2>@stderr
+  exec xvlog -sv -i $vec_dir -i $rtl_ddc_dir $rtl_ddc $tb_sv >@stdout 2>@stderr
 } err]
 if {$rc != 0} {
   puts "xvlog failed: $err"
