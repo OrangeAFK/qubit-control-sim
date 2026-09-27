@@ -4,9 +4,9 @@ Threshold/state-discrimination module (fixed threshold Phase 3, classifier-drive
 
 ## Status
 
-- **Testbench:** `hdl/tb/state_discrim/tb_state_discrim.sv` (awaiting human review).
-- **RTL:** `state_discrim.v` — **empty shell** for xsim elaborate only. Do not
-  implement the compare until the TB is reviewed.
+- **Testbench:** `hdl/tb/state_discrim/tb_state_discrim.sv` (approved).
+- **RTL:** `state_discrim.v` — signed Q12.14 compare `in_i >= threshold`,
+  one-cycle `out_valid` pulse, 1-bit `decision`. `in_q` unused.
 
 Port / Q-format contract: `docs/fixed_point_notes.md` § state_discrim
 (Q12.14 integrated IQ + threshold → 1-bit decision; bit-exact vs fixtures).
