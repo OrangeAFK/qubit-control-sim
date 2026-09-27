@@ -29,3 +29,22 @@ def s21(
     """
     f_arr = np.asarray(f, dtype=np.float64)
     return 1.0 - coupling / (1.0 + 2j * q * (f_arr - f0) / f0)
+
+
+def s21_for_state(
+    f: ArrayLike,
+    f0: float,
+    q: float,
+    coupling: float,
+    state: int,
+    chi: float,
+) -> NDArray[np.complexfloating]:
+    """S21 with qubit-state-dependent resonator frequency.
+
+    Dispersive readout model: resonance at ``f0`` for ``state=0`` and at
+    ``f0 + chi`` for ``state=1``.
+    """
+    if state not in (0, 1):
+        raise ValueError(f"state must be 0 or 1, got {state!r}")
+    f_res = f0 + state * chi
+    return s21(f, f0=f_res, q=q, coupling=coupling)

@@ -18,8 +18,8 @@ demonstrated (test output, plot, or report checked into the repo).
 no FPGA involved yet.
 
 **Tasks**
-- [ ] Lorentzian resonator model: S21(f) given center frequency, Q, coupling
-- [ ] Two-state resonator (qubit-state-dependent frequency shift)
+- [X] Lorentzian resonator model: S21(f) given center frequency, Q, coupling
+- [X] Two-state resonator (qubit-state-dependent frequency shift)
 - [ ] Noise model: additive Gaussian + configurable amplifier noise temperature
 - [ ] Cryo-chain gain/loss/attenuation model (§3.4/3.6 of ARCHITECTURE.md), stages
       parameterized (not hardcoded), each stage independently toggleable for fault injection
