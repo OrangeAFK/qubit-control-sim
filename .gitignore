@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Test / type / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Vivado / HDL local build artifacts (keep sources and checked-in reports)
+*.jou
+*.log
+*.str
+*.pb
+*.wdb
+xsim.dir/
+.Xil/
+hd_visual/
