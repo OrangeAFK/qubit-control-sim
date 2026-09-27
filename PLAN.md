@@ -49,17 +49,17 @@ threshold in numpy/scipy, as the reference the HDL must match bit-for-bit-equiva
 - [X] Threshold-based state discrimination (simple, refined in Phase 8)
 - [X] Feed Phase 1 output through this pipeline end-to-end; recover state with reasonable
       fidelity on noiseless input
-- [ ] Export golden I/O vectors (noiseless + one noisy case) as checked-in fixture files
+- [X] Export golden I/O vectors (noiseless + one noisy case) as checked-in fixture files
       under `python/cryocontrol/dsp_ref/fixtures/` (or equivalent path documented in the
       module README) for Phase 3 HDL testbenches to replay bit-exact / within tolerance
 
 **Acceptance criteria**
-- [ ] `pytest python/tests/dsp_ref/` passes
-- [ ] Given Phase 1's noiseless two-state output, this pipeline discriminates states
+- [X] `pytest python/tests/dsp_ref/` passes
+- [X] Given Phase 1's noiseless two-state output, this pipeline discriminates states
       correctly close to 100% of the time
-- [ ] This pipeline's I/O (input IQ stream, output I/Q + decision) is documented as the
+- [X] This pipeline's I/O (input IQ stream, output I/Q + decision) is documented as the
       reference the HDL testbenches will replay against
-- [ ] Golden fixture files are checked in and loadable by tests (not described only in prose)
+- [X] Golden fixture files are checked in and loadable by tests (not described only in prose)
 
 ---
 

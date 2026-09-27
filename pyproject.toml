@@ -20,5 +20,8 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["python"]
 
+[tool.setuptools.package-data]
+cryocontrol = ["dsp_ref/fixtures/*.npz"]
+
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
