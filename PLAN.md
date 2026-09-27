@@ -23,11 +23,11 @@ no FPGA involved yet.
 - [X] Noise model: additive Gaussian + configurable amplifier noise temperature
 - [X] Cryo-chain gain/loss/attenuation model (§3.4/3.6 of ARCHITECTURE.md), stages
       parameterized (not hardcoded), each stage independently toggleable for fault injection
-- [ ] Unit tests: resonance dip appears at expected frequency; SNR scales as expected with
+- [X] Unit tests: resonance dip appears at expected frequency; SNR scales as expected with
       noise parameters; each fault mode independently changes output in the expected direction
 
 **Acceptance criteria**
-- [ ] `pytest python/tests/models/` passes
+- [X] `pytest python/tests/models/` passes
 - [ ] A plot of |S21(f)| for both qubit states, saved to `docs/`, shows two distinguishable
       resonance dips
 - [ ] Fault injection (e.g. gain drift) visibly and correctly perturbs the output in a
