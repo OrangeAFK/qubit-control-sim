@@ -103,6 +103,18 @@ length through end). Complex sum is two independent accumulators (I and Q).
 Verified against: `output_iq_s0` / `output_iq_s1` / `output_iq` in the Phase 2
 fixtures within abs error ≤ 1.0 on Re and Im.
 
+Phase-3 sim ports (module TB / future AXI-Stream wrapper):
+`clk`, `rst_n` (active-low); `in_valid`; `in_i`/`in_q` signed 16-bit Q1.14
+(post-FIR/decim at `fs/M`); parameters `INTEGRATE_START` / `INTEGRATE_LENGTH`
+(fixture `start=8`, length `1016` = through end of 1024-sample decimated stream);
+`out_valid` (one-cycle pulse when the window completes); `out_i`/`out_q` signed
+32-bit Q12.14 (26-bit value, sign-extended). One complex input sample per clock
+when `in_valid`. Accumulate samples with indices
+`[INTEGRATE_START : INTEGRATE_START+INTEGRATE_LENGTH)` (0-based count of accepted
+inputs). Module-TB compare (vs quantized `integrate(decimate(apply_fir(ddc(IF))))`
+/ fixture `output_iq_*`): absolute error ≤ **1.0** on Re and Im
+(= **16384 LSB** of Q12.14) after the DUT pipeline latency / first `out_valid`.
+
 ---
 
 ## state_discrim

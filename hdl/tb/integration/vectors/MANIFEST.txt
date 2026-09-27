@@ -1,0 +1,8 @@
+# Integration TB vectors -- regenerated from Phase 2 NPZ via
+# dsp_ref.ddc -> fir -> decimate -> integrate
+# in=Q1.14 out=Q12.14 scale=2^14 tol_lsb=16384
+# window start=8 length=1016
+# case n_in start length exp_i exp_q source
+noiseless_s0 1024 8 1016 3328918 0 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noiseless_s1 1024 8 1016 16596745 -796733 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noisy 1024 8 1016 3336964 4584 python/cryocontrol/dsp_ref/fixtures/noisy.npz
