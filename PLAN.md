@@ -71,7 +71,7 @@ verified in simulation against Phase 2's golden reference — no board yet.
 **Tasks**
 - [x] Fix the numeric format (Q-format) for this chain; write the decision + rationale
       to `docs/fixed_point_notes.md` before writing RTL
-- [ ] DDC module + testbench
+- [x] DDC module + testbench
 - [ ] FIR module + testbench
 - [ ] Integration/accumulation module + testbench
 - [ ] Threshold/state-discrimination module + testbench
