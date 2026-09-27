@@ -28,9 +28,9 @@ no FPGA involved yet.
 
 **Acceptance criteria**
 - [X] `pytest python/tests/models/` passes
-- [ ] A plot of |S21(f)| for both qubit states, saved to `docs/`, shows two distinguishable
+- [X] A plot of |S21(f)| for both qubit states, saved to `docs/`, shows two distinguishable
       resonance dips
-- [ ] Fault injection (e.g. gain drift) visibly and correctly perturbs the output in a
+- [X] Fault injection (e.g. gain drift) visibly and correctly perturbs the output in a
       before/after plot
 
 ---
