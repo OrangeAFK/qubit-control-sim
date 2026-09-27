@@ -21,7 +21,7 @@ no FPGA involved yet.
 - [X] Lorentzian resonator model: S21(f) given center frequency, Q, coupling
 - [X] Two-state resonator (qubit-state-dependent frequency shift)
 - [X] Noise model: additive Gaussian + configurable amplifier noise temperature
-- [ ] Cryo-chain gain/loss/attenuation model (§3.4/3.6 of ARCHITECTURE.md), stages
+- [X] Cryo-chain gain/loss/attenuation model (§3.4/3.6 of ARCHITECTURE.md), stages
       parameterized (not hardcoded), each stage independently toggleable for fault injection
 - [ ] Unit tests: resonance dip appears at expected frequency; SNR scales as expected with
       noise parameters; each fault mode independently changes output in the expected direction
