@@ -38,6 +38,14 @@ if {![file isfile $tb_sv]} {
 file mkdir $work_dir
 cd $work_dir
 
+# Coeff ROM for DUT $readmemh("fir_coeffs.mem") — cwd is work_dir
+set coeff_src [file join $vec_dir fir_coeffs.mem]
+if {![file isfile $coeff_src]} {
+  puts "ERROR: missing $coeff_src"
+  exit 1
+}
+file copy -force $coeff_src [file join $work_dir fir_coeffs.mem]
+
 # Fresh compile each run
 foreach leftover {xsim.dir xvlog.pb xelab.pb xsim_*.jou xsim_*.log} {
   catch {file delete -force {*}[glob -nocomplain $leftover]}
