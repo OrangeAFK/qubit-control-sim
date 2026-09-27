@@ -77,6 +77,16 @@ AXI-loadable copies of quantized `fir_coeffs` from the golden fixture.
 Verified against: fixture post-FIR/decimated streams within a few LSBs; end-to-end
 tolerance owned by top-level.
 
+Phase-3 sim ports (module TB / future AXI-Stream wrapper):
+`clk`, `rst_n` (active-low); `in_valid`; `in_i`/`in_q` signed 16-bit Q1.14
+(post-DDC baseband at `fs`); parameters `NUM_TAPS` / `DECIM_M` (fixture 63 / 4);
+`out_valid`; `out_i`/`out_q` signed 16-bit Q1.14 at `fs/M`. Coeff ROM =
+quantized fixture `fir_coeffs` (Q1.14). One complex input sample per clock when
+`in_valid`; DUT emits every `DECIM_M`-th filtered sample (`out_valid`).
+Per-sample module-TB compare (vs quantized `decimate(apply_fir(dsp_ref.ddc(IF)))`):
+absolute error ≤ **8 LSB** on I and on Q after the DUT pipeline latency / first
+`out_valid`.
+
 ---
 
 ## integration

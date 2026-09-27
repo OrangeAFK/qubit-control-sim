@@ -34,5 +34,6 @@ Thumbs.db
 *.wdb
 xsim.dir/
 xsim_ddc/
+xsim_fir/
 .Xil/
 hd_visual/
