@@ -15,9 +15,12 @@ under `docs/reports/phase4_readout_2026-09-27*` as board bring-up success.
 2. **Need a Zynq PS BD** that maps AXI-Lite to the frozen readout aperture
    (`BASE_ADDR_TENTATIVE` in `axi_lite_regs.py` / ARCHITECTURE.md §3.3.1) and an
    AXIS MM2S (or equivalent) path to feed IF samples from Phase 2/3 fixtures.
-3. **Timing does not meet 100 MHz today.** Routed WNS ≈ **−16.9 ns**, DSP48E1
-   **100%** (66/66). Reliable closed-loop HW at the planned clock likely needs FIR
-   (or chain) pipelining / resource relief before board bring-up is meaningful.
+3. **Timing does not meet 100 MHz today.** After multi-cycle FIR + DDC
+   pipelining, routed WNS ≈ **−5.6 ns** (was −16.9 ns), DSP48E1 **40/66
+   (61%)**. Critical path is the FIR snapshot mux → DSP → accumulate under
+   congestion; full serial MAC (16 engines) / shifting-snapshot variants
+   over-utilized LUTs on xc7z007s. See
+   `docs/reports/phase4_readout_2026-09-27_pipelined*`.
 4. **`MmioBackend` / DMA push are stubs.** `ReadoutDriver` works end-to-end under
    `MockBackend` in pytest; board MMIO + DMA wiring is still future work.
 

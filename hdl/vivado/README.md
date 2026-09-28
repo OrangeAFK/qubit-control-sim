@@ -62,19 +62,23 @@ Linux / Git Bash equivalent: `source <Vivado>/settings64.sh` then the same
 4. Writes utilization + timing summary under `out_cora_readout/` and copies a
    combined report into `docs/reports/`.
 
-### Latest checked-in run (2026-09-27, Vivado 2025.1)
+### Latest checked-in run (2026-09-27 pipelined, Vivado 2025.1)
 
-Real OOC synth+impl of `cora_readout_pl` on `xc7z007sclg400-1`:
+Real OOC synth+impl of `cora_readout_pl` on `xc7z007sclg400-1` after multi-cycle
+FIR (2 taps/cycle × 8 engines) + 4-stage DDC pipeline:
 
 | metric | value |
 |--------|--------|
-| Slice LUTs | 5347 / 14400 (37%) |
-| Slice Registers | 2593 / 28800 (9%) |
-| DSP48E1 | 66 / 66 (100%) |
-| Timing @ 100 MHz | **not met** — WNS −16.889 ns (deep FIR MAC; needs pipelining later) |
+| Slice LUTs | 8834 / 14400 (61%) |
+| Slice Registers | 19758 / 28800 (69%) |
+| DSP48E1 | 40 / 66 (61%) |
+| Timing @ 100 MHz | **not met** — WNS −5.597 ns (FIR snap mux→DSP; congestion) |
 
-Reports: `docs/reports/phase4_readout_2026-09-27*.txt|.rpt`. This is **not** a
-board bitstream and does **not** claim on-hardware match.
+Baseline pre-pipeline: WNS −16.889 ns, DSP 66/66 — see
+`phase4_readout_2026-09-27_pre_pipeline*`. Pipelined reports:
+`phase4_readout_2026-09-27_pipelined*` (and same-day
+`phase4_readout_2026-09-27.{txt,_timing.rpt,_utilization.rpt}`). This is **not**
+a board bitstream and does **not** claim on-hardware match.
 
 ### Out of scope
 

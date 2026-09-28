@@ -2,15 +2,13 @@
 // ddc — digital downconversion (NCO mixer)
 //
 // y[n] = x[n] * exp(-j * θ[n]),  θ[n] = phase0 + n * phase_inc
-//   (phase words: full circle = 2^32, matching docs/fixed_point_notes.md § ddc)
 //
-// NCO: 32-bit phase accumulator + quarter-wave Q1.14 sine LUT (1024+1) with
-// 8-bit linear interpolation; complex multiply in Q2.28 then round-nearest /
-// saturate back to Q1.14.
-//
-// Pipeline: 1 cycle after phase0 load. First in_valid sample emerges on the
-// next clock with out_valid=1. TB allows arbitrary DUT latency before first
-// out_valid.
+// Pipeline: after phase0 load, each in_valid sample takes 4 clocks —
+//   stage 0: capture addr/frac/quad + IQ; advance phase
+//   stage 1: LUT read → register s0/s1/c0/c1 (+ frac/quad/IQ forward)
+//   stage 2: linear interp + quadrant → cos/sin
+//   stage 3: complex multiply, round/sat → out_*
+// TB allows arbitrary DUT latency before first out_valid.
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -19,18 +17,15 @@ module ddc (
     input  wire               clk,
     input  wire               rst_n,
     input  wire               in_valid,
-    input  wire signed [15:0] in_i,       // Q1.14
-    input  wire signed [15:0] in_q,       // Q1.14
-    input  wire        [31:0] phase_inc,  // f_lo/fs * 2^32
-    input  wire        [31:0] phase0,     // phase0_rad/(2π) * 2^32
+    input  wire signed [15:0] in_i,
+    input  wire signed [15:0] in_q,
+    input  wire        [31:0] phase_inc,
+    input  wire        [31:0] phase0,
     output reg                out_valid,
-    output reg  signed [15:0] out_i,      // Q1.14
-    output reg  signed [15:0] out_q       // Q1.14
+    output reg  signed [15:0] out_i,
+    output reg  signed [15:0] out_q
 );
 
-    // -------------------------------------------------------------------------
-    // Quarter-wave sine LUT: S[i] = round(sin(i*π/(2*1024)) * 2^14), i=0..1024
-    // -------------------------------------------------------------------------
     localparam integer LUT_N = 1024;
 
     reg signed [15:0] sin_lut [0:LUT_N];
@@ -39,72 +34,79 @@ module ddc (
 `include "sin_q14.vh"
     end
 
-    // -------------------------------------------------------------------------
-    // Phase accumulator + one-shot phase0 load after reset
-    // -------------------------------------------------------------------------
     reg        [31:0] phase;
     reg               phase_loaded;
 
-    // -------------------------------------------------------------------------
-    // NCO: phase → cos/sin (Q1.14) via LUT + linear interpolation
-    // -------------------------------------------------------------------------
-    wire [1:0] quad = phase[31:30];
-    wire [9:0] addr = phase[29:20];
-    wire [7:0] frac = phase[19:12];
+    // Stage 0
+    reg [1:0]         quad_s0;
+    reg [9:0]         addr_s0;
+    reg [7:0]         frac_s0;
+    reg signed [15:0] iq_i_s0;
+    reg signed [15:0] iq_q_s0;
+    reg               stage1_valid;
 
-    wire signed [15:0] s0 = sin_lut[addr];
-    wire signed [15:0] s1 = sin_lut[{addr + 10'd1}];
-    // cos(θ) = sin(π/2 − θ)
-    wire signed [15:0] c0 = sin_lut[LUT_N - addr];
-    wire signed [15:0] c1 = sin_lut[LUT_N - 1 - addr];
+    // Stage 1: registered LUT samples
+    reg signed [15:0] s0_r, s1_r, c0_r, c1_r;
+    reg [1:0]         quad_s1;
+    reg [7:0]         frac_s1;
+    reg signed [15:0] iq_i_s1;
+    reg signed [15:0] iq_q_s1;
+    reg               stage2_valid;
 
-    wire [8:0] frac_comp = 9'd256 - {1'b0, frac};
+    // Stage 2: NCO cos/sin
+    reg signed [15:0] cos_nco;
+    reg signed [15:0] sin_nco;
+    reg signed [15:0] iq_i_s2;
+    reg signed [15:0] iq_q_s2;
+    reg               stage3_valid;
 
-    // signed 16 × unsigned 0..256 → keep product wide, then >> 8
+    // Combinational LUT from stage-0 addr
+    wire signed [15:0] s0_c = sin_lut[addr_s0];
+    wire signed [15:0] s1_c = sin_lut[{addr_s0 + 10'd1}];
+    wire signed [15:0] c0_c = sin_lut[LUT_N - addr_s0];
+    wire signed [15:0] c1_c = sin_lut[LUT_N - 1 - addr_s0];
+
+    // Combinational interp from stage-1 regs
+    wire [8:0] frac_comp = 9'd256 - {1'b0, frac_s1};
+
     wire signed [25:0] sin_interp_num =
-        ($signed(s0) * $signed({1'b0, frac_comp})) +
-        ($signed(s1) * $signed({1'b0, frac}));
+        ($signed(s0_r) * $signed({1'b0, frac_comp})) +
+        ($signed(s1_r) * $signed({1'b0, frac_s1}));
     wire signed [25:0] cos_interp_num =
-        ($signed(c0) * $signed({1'b0, frac_comp})) +
-        ($signed(c1) * $signed({1'b0, frac}));
+        ($signed(c0_r) * $signed({1'b0, frac_comp})) +
+        ($signed(c1_r) * $signed({1'b0, frac_s1}));
 
     wire signed [15:0] sin_q = sin_interp_num[23:8];
     wire signed [15:0] cos_q = cos_interp_num[23:8];
 
-    reg signed [15:0] cos_nco;
-    reg signed [15:0] sin_nco;
+    reg signed [15:0] cos_nco_c;
+    reg signed [15:0] sin_nco_c;
 
     always @(*) begin
-        case (quad)
+        case (quad_s1)
             2'd0: begin
-                cos_nco = cos_q;
-                sin_nco = sin_q;
+                cos_nco_c = cos_q;
+                sin_nco_c = sin_q;
             end
             2'd1: begin
-                cos_nco = -sin_q;
-                sin_nco = cos_q;
+                cos_nco_c = -sin_q;
+                sin_nco_c = cos_q;
             end
             2'd2: begin
-                cos_nco = -cos_q;
-                sin_nco = -sin_q;
+                cos_nco_c = -cos_q;
+                sin_nco_c = -sin_q;
             end
             default: begin
-                cos_nco = sin_q;
-                sin_nco = -cos_q;
+                cos_nco_c = sin_q;
+                sin_nco_c = -cos_q;
             end
         endcase
     end
 
-    // -------------------------------------------------------------------------
-    // Complex multiply: (I + jQ) * (cos − j sin)
-    //   out_i = I*cos + Q*sin
-    //   out_q = Q*cos − I*sin
-    // Products are Q2.28; sum in 33-bit Q3.28; round/sat → Q1.14
-    // -------------------------------------------------------------------------
-    wire signed [31:0] p_ii = in_i * cos_nco;
-    wire signed [31:0] p_qs = in_q * sin_nco;
-    wire signed [31:0] p_qi = in_q * cos_nco;
-    wire signed [31:0] p_is = in_i * sin_nco;
+    wire signed [31:0] p_ii = iq_i_s2 * cos_nco;
+    wire signed [31:0] p_qs = iq_q_s2 * sin_nco;
+    wire signed [31:0] p_qi = iq_q_s2 * cos_nco;
+    wire signed [31:0] p_is = iq_i_s2 * sin_nco;
 
     wire signed [32:0] acc_i = {p_ii[31], p_ii} + {p_qs[31], p_qs};
     wire signed [32:0] acc_q = {p_qi[31], p_qi} - {p_is[31], p_is};
@@ -129,27 +131,84 @@ module ddc (
     wire signed [15:0] mix_i = sat16(shift_i);
     wire signed [15:0] mix_q = sat16(shift_q);
 
-    // -------------------------------------------------------------------------
-    // Sequential: load phase0 once after reset, then mix on in_valid
-    // -------------------------------------------------------------------------
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             phase        <= 32'd0;
             phase_loaded <= 1'b0;
+            quad_s0      <= 2'd0;
+            addr_s0      <= 10'd0;
+            frac_s0      <= 8'd0;
+            iq_i_s0      <= 16'sd0;
+            iq_q_s0      <= 16'sd0;
+            stage1_valid <= 1'b0;
+            s0_r         <= 16'sd0;
+            s1_r         <= 16'sd0;
+            c0_r         <= 16'sd0;
+            c1_r         <= 16'sd0;
+            quad_s1      <= 2'd0;
+            frac_s1      <= 8'd0;
+            iq_i_s1      <= 16'sd0;
+            iq_q_s1      <= 16'sd0;
+            stage2_valid <= 1'b0;
+            cos_nco      <= 16'sd0;
+            sin_nco      <= 16'sd0;
+            iq_i_s2      <= 16'sd0;
+            iq_q_s2      <= 16'sd0;
+            stage3_valid <= 1'b0;
             out_valid    <= 1'b0;
             out_i        <= 16'sd0;
             out_q        <= 16'sd0;
         end else if (!phase_loaded) begin
             phase        <= phase0;
             phase_loaded <= 1'b1;
+            stage1_valid <= 1'b0;
+            stage2_valid <= 1'b0;
+            stage3_valid <= 1'b0;
             out_valid    <= 1'b0;
-        end else if (in_valid) begin
-            out_i     <= mix_i;
-            out_q     <= mix_q;
-            out_valid <= 1'b1;
-            phase     <= phase + phase_inc;
         end else begin
-            out_valid <= 1'b0;
+            if (in_valid) begin
+                quad_s0      <= phase[31:30];
+                addr_s0      <= phase[29:20];
+                frac_s0      <= phase[19:12];
+                iq_i_s0      <= in_i;
+                iq_q_s0      <= in_q;
+                stage1_valid <= 1'b1;
+                phase        <= phase + phase_inc;
+            end else begin
+                stage1_valid <= 1'b0;
+            end
+
+            if (stage1_valid) begin
+                s0_r         <= s0_c;
+                s1_r         <= s1_c;
+                c0_r         <= c0_c;
+                c1_r         <= c1_c;
+                quad_s1      <= quad_s0;
+                frac_s1      <= frac_s0;
+                iq_i_s1      <= iq_i_s0;
+                iq_q_s1      <= iq_q_s0;
+                stage2_valid <= 1'b1;
+            end else begin
+                stage2_valid <= 1'b0;
+            end
+
+            if (stage2_valid) begin
+                cos_nco      <= cos_nco_c;
+                sin_nco      <= sin_nco_c;
+                iq_i_s2      <= iq_i_s1;
+                iq_q_s2      <= iq_q_s1;
+                stage3_valid <= 1'b1;
+            end else begin
+                stage3_valid <= 1'b0;
+            end
+
+            if (stage3_valid) begin
+                out_i     <= mix_i;
+                out_q     <= mix_q;
+                out_valid <= 1'b1;
+            end else begin
+                out_valid <= 1'b0;
+            end
         end
     end
 
