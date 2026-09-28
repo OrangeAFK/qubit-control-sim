@@ -20,5 +20,10 @@ script, and run instructions (`hdl/vivado/sim_integration.tcl`).
 ## Phase 3 — State discrimination / threshold
 
 See [`state_discrim/`](state_discrim/) for `tb_state_discrim.sv`, fixture export
-script, and run instructions (`hdl/vivado/sim_state_discrim.tcl`). TB-only until
-human review; `hdl/rtl/state_discrim/state_discrim.v` is an empty shell.
+script, and run instructions (`hdl/vivado/sim_state_discrim.tcl`).
+
+## Phase 3 — Top-level readout chain
+
+See [`readout_chain/`](readout_chain/) for `tb_readout_chain.sv`, fixture export
+script, and run instructions (`hdl/vivado/sim_readout_chain.tcl`). TB-only until
+human review; `hdl/rtl/readout_chain/readout_chain.v` is an empty shell.

@@ -1,0 +1,11 @@
+# Readout-chain TB vectors -- regenerated from Phase 2 NPZ
+# stimulus = quantize_Q1.14(fixture input_iq_*)
+# expected  = quantize_Q12.14(fixture output_iq_*) + fixture decision_*
+# Q12.14 tol_lsb=16384 (abs err <= 1.0); decisions bit-exact
+# threshold_float=608.0829560623529 threshold_q1214=9962831
+# phase_inc=0x1999999a phase0=0x00000000
+# integrate_start=8 integrate_length=1016
+# case n_samples exp_i exp_q exp_decision source
+noiseless_s0 4096 3328918 0 0 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noiseless_s1 4096 16596745 -796733 1 python/cryocontrol/dsp_ref/fixtures/noiseless.npz
+noisy 4096 3336964 4584 0 python/cryocontrol/dsp_ref/fixtures/noisy.npz
