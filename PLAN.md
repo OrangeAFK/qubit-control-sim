@@ -75,16 +75,16 @@ verified in simulation against Phase 2's golden reference — no board yet.
 - [x] FIR module + testbench
 - [x] Integration/accumulation module + testbench
 - [x] Threshold/state-discrimination module + testbench
-- [ ] Top-level readout-chain testbench: feed Phase 2's checked-in fixture vectors in
+- [x] Top-level readout-chain testbench: feed Phase 2's checked-in fixture vectors in
       (not a regenerated-from-description proxy), compare HDL output to golden reference
       within documented fixed-point tolerance
 
 **Acceptance criteria**
-- [ ] Every module has a passing testbench (simulator: see AGENTS.md); each TB was
+- [x] Every module has a passing testbench (simulator: see AGENTS.md); each TB was
       human-reviewed before its DUT was written
-- [ ] Top-level chain simulation output matches the Phase 2 golden **fixture files**
+- [x] Top-level chain simulation output matches the Phase 2 golden **fixture files**
       within the documented tolerance, for at least the noiseless case and one noisy case
-- [ ] `docs/fixed_point_notes.md` has an entry for every module in this phase
+- [x] `docs/fixed_point_notes.md` has an entry for every module in this phase
 
 ---
 
