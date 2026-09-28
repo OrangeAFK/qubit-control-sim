@@ -60,11 +60,12 @@ Phase-3 sim ports (module TB / future AXI-Stream wrapper):
 Per-sample module-TB compare (vs quantized `dsp_ref.ddc` of fixture IF): absolute
 error ≤ **4 LSB** on I and on Q after the DUT pipeline latency / first `out_valid`.
 
-**Architecture (Phase 4 timing):** 4-cycle pipeline — stage 0 registers NCO
-address/frac/quadrant + IQ; stage 1 registers LUT samples; stage 2 does linear
-interp + quadrant into cos/sin; stage 3 does the complex multiply, round, and
-saturate into `out_*`. Same math as the 1-cycle Phase 3 path; TBs allow the
-extra latency.
+**Architecture (Phase 4 timing):** 6-cycle pipeline — stage 0 registers NCO
+address/frac/quadrant + IQ; stage 1 registers LUT samples; stage 2 registers
+linear-interp Q1.14 (`sin_q`/`cos_q`); stage 3 applies quadrant into cos/sin;
+stage 4 registers the four complex-multiply products; stage 5 does add/sub,
+round, and saturate into `out_*`. Same math as the 1-cycle Phase 3 path; TBs
+allow the extra latency (≤4 LSB).
 
 ---
 

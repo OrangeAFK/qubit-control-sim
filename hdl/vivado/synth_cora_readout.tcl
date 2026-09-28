@@ -100,9 +100,9 @@ puts "=== route_design ==="
 route_design
 
 # Timestamp + optional tag so iterative timing experiments do not clobber
-# prior same-day reports (e.g. _bram, _productpipe).
+# prior same-day reports (e.g. _bram, _productpipe, _ddcpipe).
 set date_str   [clock format [clock seconds] -format "%Y-%m-%d"]
-set rpt_suffix "_productpipe"
+set rpt_suffix "_ddcpipe"
 
 set util_rpt   [file join $out_dir utilization.rpt]
 set timing_rpt [file join $out_dir timing_summary.rpt]

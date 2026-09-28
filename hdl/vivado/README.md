@@ -62,26 +62,26 @@ Linux / Git Bash equivalent: `source <Vivado>/settings64.sh` then the same
 4. Writes utilization + timing summary under `out_cora_readout/` and copies a
    combined report into `docs/reports/`.
 
-### Latest checked-in run (2026-09-27 product-pipe FIR, Vivado 2025.1)
+### Latest checked-in run (2026-09-27 DDC pipe, Vivado 2025.1)
 
 Real OOC synth+impl of `cora_readout_pl` on `xc7z007sclg400-1` after FIR
-registered-product MAC (BRAM → product reg → acc, 17 engines / RAMB18) +
-4-stage DDC:
+registered-product MAC + **6-stage DDC** (interp reg + quadrant + mix-product
+reg):
 
 | metric | value |
 |--------|--------|
-| Slice LUTs | 6902 / 14400 (48%) |
-| Slice Registers | 2985 / 28800 (10%) |
+| Slice LUTs | 6915 / 14400 (48%) |
+| Slice Registers | 3018 / 28800 (10%) |
 | Block RAM (RAMB18) | 17 / 100 (17%) |
 | DSP48E1 | 42 / 66 (64%) |
-| Timing @ 100 MHz | **not met** — WNS −2.464 ns (critical: DDC NCO interp) |
-| Suggested PL clock | **50 MHz** (from WNS; Fmax ≈ 80 MHz) |
+| Timing @ 100 MHz | **met** — WNS **+0.149 ns** (critical: FIR eng → DSP RSTP) |
+| Preferred PL clock | **100 MHz** |
 
-Prior same-day: BRAM FIR WNS −4.524 ns (`…_bram*`); pipelined snap-mux
-−5.597 ns (`…_pipelined*`); pre-pipeline −16.889 ns (`…_pre_pipeline*`).
-Latest: `phase4_readout_2026-09-27_productpipe*` (and untagged
-`phase4_readout_2026-09-27.{txt,_timing.rpt,_utilization.rpt}` from the same
-run). This is **not** a board bitstream and does **not** claim on-hardware match.
+Prior same-day: DDC interp-only WNS −0.600 ns (`…_ddcpipe_interp*`); FIR
+product-pipe −2.464 ns (`…_productpipe*`); BRAM FIR −4.524 ns (`…_bram*`);
+pipelined snap-mux −5.597 ns (`…_pipelined*`); pre-pipeline −16.889 ns
+(`…_pre_pipeline*`). Latest: `phase4_readout_2026-09-27_ddcpipe*`. This is
+**not** a board bitstream and does **not** claim on-hardware match.
 
 ### Out of scope
 
