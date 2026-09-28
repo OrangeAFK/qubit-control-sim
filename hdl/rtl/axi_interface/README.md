@@ -7,9 +7,11 @@ AXI4-Stream IF sample ingress for Phase 4 readout on Cora Z7-07S.
 | File | Role |
 |------|------|
 | `axis_if_ingress.v` | AXI-Stream slave → `readout_chain`-style `m_valid`/`m_i`/`m_q` |
+| `axi_lite_regs.v` | AXI4-Lite slave stub for the frozen map (ARCHITECTURE.md §3.3.1) |
 
-AXI-Lite slave RTL (wrapping the frozen map in ARCHITECTURE.md §3.3.1) is a
-later Phase 4 task; offsets live in `python/cryocontrol/hardware/axi_lite_regs.py`.
+Offsets also mirrored in `python/cryocontrol/hardware/axi_lite_regs.py`.
+PL top that wires Lite + Stream + `readout_chain`: `hdl/rtl/top/cora_readout_pl.v`
+(synth via `hdl/vivado/synth_cora_readout.tcl`).
 
 ## Stream packing and handshake
 

@@ -39,5 +39,7 @@ xsim_integration/
 xsim_state_discrim/
 xsim_readout_chain/
 xsim_axis_if_ingress/
+out_cora_readout/
+hdl/rtl/fir/fir_coeffs.mem
 .Xil/
 hd_visual/
