@@ -10,3 +10,14 @@ allowed to touch hardware registers.
 - `MmioBackend` — Cora bring-up stub (requires a mapped view; DMA path not wired yet)
 
 Packing (`packing.py`): `TDATA = {Q[15:0], I[15:0]}` signed Q1.14 per §3.3.1.
+
+## On-hardware (blocked)
+
+Full procedure, blockers (need PS+DMA bitstream; OOC design is not programmable;
+timing fail at 100 MHz), and pass criteria: [`docs/phase4_on_hardware.md`](../../../docs/phase4_on_hardware.md).
+
+Software-only dry-run (mock + fixtures, **not** Cora):
+
+```text
+python scripts/phase4_readout_dry_run.py
+```
