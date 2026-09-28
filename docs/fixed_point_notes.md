@@ -73,7 +73,8 @@ accumulator needs ~6 extra integer bits for worst-case `sum|h|·|x|` (~1.32·|x|
 use a signed **Q8.28** (or equivalent ≥36-bit) MAC, then round/saturate to Q1.14
 output. Decimation **M = 4** (fixture `decim_factor`) is implemented at this stage
 by emitting every M-th filtered sample (no format change). Coeffs are compile-time /
-AXI-loadable copies of quantized `fir_coeffs` from the golden fixture.
+on-chip ROM copies of quantized `fir_coeffs` from the golden fixture.
+Phase 4 freezes coeffs as ROM (not AXI-writable); see ARCHITECTURE.md §3.3.1.
 Verified against: fixture post-FIR/decimated streams within a few LSBs; end-to-end
 tolerance owned by top-level.
 

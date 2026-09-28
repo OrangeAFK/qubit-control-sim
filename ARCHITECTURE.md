@@ -84,6 +84,95 @@ Requirements:
 - Every module ships with a synthesis/resource/timing report (Vivado, non-project TCL flow)
   checked into `docs/reports/`.
 
+#### 3.3.1 Phase 4 readout AXI-Lite register map (frozen)
+
+**Status:** Frozen for Phase 4 Cora Z7-07S readout DSP. Change only via PR to this
+section (and matching `python/cryocontrol/hardware/axi_lite_regs.py`). Do not invent
+a second map in HDL/TCL.
+
+**Slave role:** one AXI4-Lite slave wrapping Phase 3 `readout_chain` config/status/results.
+All registers are **32-bit**, little-endian, **4-byte aligned** offsets from the PL
+slave base. Byte lanes beyond a field's used bits read as zero / ignore writes.
+
+**PS physical base (tentative):** `0x43C0_0000` (typical Zynq-7000 `M_AXI_GP0` custom-IP
+slot on Cora Z7). Final address is whatever Vivado Address Editor assigns; software must
+use the exported address, not hard-code the tentative value blindly. Machine-readable
+mirror: `cryocontrol.hardware.axi_lite_regs`.
+
+**Stimulus path (tentative — next PLAN task owns details):** IF IQ ingress is an
+**AXI-Stream slave** into the readout chain (`TDATA` = `{Q[15:0], I[15:0]}` packed, each
+lane signed **Q1.14**; one complex sample per beat when `TVALID`/`TREADY`). On hardware,
+the preferred feed is **PS → DMA (MM2S) → AXI-Stream**; a pure PL test harness that
+drives the same Stream ports is also allowed for bring-up. Exact DMA IP, buffer layout,
+and `TLAST` semantics are **not** frozen here — only that sample data does **not** go
+through this Lite map. Results and run control are always via the Lite registers below.
+
+**FIR policy (frozen for Phase 4):** FIR coefficients and `NUM_TAPS` / `DECIM_M` stay
+**compile-time / on-chip ROM** matching Phase 2 fixture quantization. They are **not**
+AXI-writable in Phase 4. `NUM_TAPS` and `DECIM_M` appear as read-only identity fields so
+software can confirm the bitstream. A future coeff bank may occupy reserved space at
+`0x100+` without moving the frozen map below.
+
+**Acquisition sequence (software view):**
+1. Write `PHASE_INC`, `PHASE0`, `THRESHOLD`, `INTEGRATE_START`, `INTEGRATE_LENGTH`.
+2. Pulse `CTRL.ARM` (clears `STATUS.DONE` / overrun as defined below).
+3. Stream IF samples until the chain completes (integration window + discrimination).
+4. Poll `STATUS.DONE`; read `RESULT_I`, `RESULT_Q`, `RESULT_META`.
+5. Optionally pulse `CTRL.CLR_DONE` before the next run.
+
+| Offset | Name | Access | Reset | Description |
+|---:|---|---|---:|---|
+| `0x00` | `CTRL` | R/W | `0x0` | Control (W1P fields; see bit table) |
+| `0x04` | `STATUS` | RO | `0x0` | Live / sticky status |
+| `0x08` | `PHASE_INC` | R/W | `0x0` | NCO tuning word: `round(f_lo/fs · 2³²)`, unsigned |
+| `0x0C` | `PHASE0` | R/W | `0x0` | NCO start phase: `round(phase0_rad/(2π) · 2³²)`, unsigned |
+| `0x10` | `THRESHOLD` | R/W | `0x0` | State threshold, signed **Q12.14** (same as `state_discrim`) |
+| `0x14` | `INTEGRATE_START` | R/W | `8` | First post-decim sample index in the integrate window (unsigned) |
+| `0x18` | `INTEGRATE_LENGTH` | R/W | `1016` | Integrate window length in post-decim samples (unsigned) |
+| `0x1C` | `RESULT_I` | RO | `0x0` | Latched integrated I, signed **Q12.14** (valid when `STATUS.DONE`) |
+| `0x20` | `RESULT_Q` | RO | `0x0` | Latched integrated Q, signed **Q12.14** |
+| `0x24` | `RESULT_META` | RO | `0x0` | Latched decision / meta (see bits) |
+| `0x28` | `DECIM_M` | RO | `4` | Build-time FIR decimation factor |
+| `0x2C` | `NUM_TAPS` | RO | `63` | Build-time FIR tap count |
+| `0x30` | `VERSION` | RO | `0x00040001` | `{major[31:16]=4, minor[15:0]=1}` — map revision |
+| `0x34` | `MAGIC` | RO | `0x43524F34` | ASCII `CRO4` — CryoControl ReadOut Phase 4 identity |
+| `0x38` | `IF_SAMPLE_COUNT` | RO | `0x0` | IF samples accepted (`in_valid`) in the current/last run |
+
+Reserved for growth (not implemented in Phase 4): byte offsets `0x3C`–`0xFF` inside the
+primary Lite aperture; optional FIR coeff bank starting at `0x100` (63 × 32-bit Q1.14
+words). Primary aperture size reserved in address maps: **256 bytes** (`0x100`).
+
+**`CTRL` bits** (write-1-to-pulse unless noted; reads return 0 for pulse bits):
+
+| Bit | Name | Meaning |
+|---:|---|---|
+| 0 | `SOFT_RST` | Pulse: soft-reset DSP datapath + clear sticky status/results (config regs retained) |
+| 1 | `ARM` | Pulse: arm for a new acquisition; clears `DONE` and `OVERRUN`; sets `ARMED` |
+| 2 | `CLR_DONE` | Pulse: clear sticky `DONE` only (results remain until next latch) |
+| 31:3 | — | Reserved; write 0 |
+
+**`STATUS` bits:**
+
+| Bit | Name | Meaning |
+|---:|---|---|
+| 0 | `BUSY` | 1 while armed and/or processing samples until decision latch |
+| 1 | `DONE` | Sticky 1 after `out_valid` latch; cleared by `ARM` or `CLR_DONE` |
+| 2 | `OVERRUN` | Sticky 1 if Stream presented a sample while not `ARMED`/`BUSY` as allowed by the Stream wrapper |
+| 3 | `ARMED` | 1 after `ARM` until run completes or `SOFT_RST` |
+| 31:4 | — | Reserved; read 0 |
+
+**`RESULT_META` bits:**
+
+| Bit | Name | Meaning |
+|---:|---|---|
+| 0 | `DECISION` | Latched 1-bit state (`Re(IQ) >= threshold → 1`) |
+| 31:1 | — | Reserved; read 0 |
+
+**Q-format reminder:** IF Stream samples and chain internals match `docs/fixed_point_notes.md`
+(`readout_chain`). Fixture defaults used in Phase 3 golden vectors:
+`PHASE_INC = 0x1999999A`, `PHASE0 = 0`, `THRESHOLD = 9962831` (Q12.14),
+`INTEGRATE_START = 8`, `INTEGRATE_LENGTH = 1016`.
+
 ### 3.4 RF/cryogenic-chain simulation (Python software model)
 
 Models the physical chain: DAC → IQ/RF generation → attenuation → superconducting device →
