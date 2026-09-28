@@ -96,7 +96,7 @@ document it), with results read back over AXI-Lite.
 
 **Tasks**
 - [x] AXI-Lite config/status register map (frozen here; document in ARCHITECTURE.md)
-- [ ] AXI-Stream ingestion of synthetic ADC samples (from Phase 1/2's generated test vectors,
+- [x] AXI-Stream ingestion of synthetic ADC samples (from Phase 1/2's generated test vectors,
       loaded via PS)
 - [ ] `python/cryocontrol/hardware/` driver: push samples, configure, read back results
 - [ ] Vivado synthesis + implementation, non-project TCL flow, resource/timing report to
