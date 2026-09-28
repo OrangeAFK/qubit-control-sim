@@ -147,3 +147,21 @@ state_discrim`. Phase 4 may wrap the same formats on AXI-Lite/Stream without
 changing Q-formats.
 Verified against: both `noiseless.npz` and `noisy.npz`; integrated I/Q abs error
 ≤ 1.0; decisions bit-exact.
+
+---
+
+## axis_if_ingress
+
+Format: AXI4-Stream slave beat **`TDATA[31:0] = {Q[15:0], I[15:0]}`**, each lane
+signed **Q1.14** (two's complement). Native outputs `m_i` / `m_q` are the same
+Q1.14 lanes (no requantize). `sample_count` is unsigned 32-bit beat count.
+Range: I/Q as Q1.14 ≈ [-2, 2); one complex IF sample per accepted beat.
+Rationale: Matches ARCHITECTURE.md §3.3.1 stimulus packing and Phase 3
+`readout_chain` `in_i`/`in_q` ports so PS DMA (or a PL harness) can inject the
+same Phase 2/3 fixture vectors without format conversion in fabric. Module is
+handshake glue only — no DSP. One-cycle registered native output for clean
+timing into `readout_chain`.
+Verified against: `hdl/tb/axi_interface/tb_axis_if_ingress.sv` streams
+`hdl/tb/readout_chain/vectors/*_in_{i,q}.mem` (Q1.14 hex); sink must match
+packed fixture I/Q beat-exact, `sample_count == N`, and `m_last` only on the
+TLAST beat.

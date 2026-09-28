@@ -99,13 +99,27 @@ slot on Cora Z7). Final address is whatever Vivado Address Editor assigns; softw
 use the exported address, not hard-code the tentative value blindly. Machine-readable
 mirror: `cryocontrol.hardware.axi_lite_regs`.
 
-**Stimulus path (tentative — next PLAN task owns details):** IF IQ ingress is an
-**AXI-Stream slave** into the readout chain (`TDATA` = `{Q[15:0], I[15:0]}` packed, each
-lane signed **Q1.14**; one complex sample per beat when `TVALID`/`TREADY`). On hardware,
-the preferred feed is **PS → DMA (MM2S) → AXI-Stream**; a pure PL test harness that
-drives the same Stream ports is also allowed for bring-up. Exact DMA IP, buffer layout,
-and `TLAST` semantics are **not** frozen here — only that sample data does **not** go
-through this Lite map. Results and run control are always via the Lite registers below.
+**Stimulus path (Phase 4 — AXI-Stream IF ingress):** Sample data does **not** go
+through this Lite map. Results and run control stay on Lite; IF IQ enters via an
+**AXI4-Stream slave** (`hdl/rtl/axi_interface/axis_if_ingress.v`) that unpacks to
+`readout_chain` `in_valid` / `in_i` / `in_q`.
+
+| Item | Phase 4 choice |
+|---|---|
+| Packing | `TDATA[31:0] = {Q[15:0], I[15:0]}` — I in bits `[15:0]`, Q in `[31:16]`, each signed **Q1.14** |
+| Beat | One complex IF sample per beat when `TVALID && TREADY` |
+| `TREADY` | Asserted when ingress `accept` is high (later tied to Lite `ARM`/`BUSY`); low = backpressure |
+| `TLAST` | Asserted on the **last beat of one acquisition buffer** (one DMA BTT / one fixture length). Ingress pulses native `m_last` on that accepted beat; it does **not** gate forwarding of earlier beats. Soft/DMA must set `TLAST` on sample `N-1` |
+| Preferred HW feed | **PS → contiguous DDR buffer → DMA MM2S → this Stream slave** |
+| Bring-up alt | PL testbench/harness driving the same Stream ports (sim: `tb_axis_if_ingress`) |
+
+**PS buffer layout (little-endian ARM view):** for sample `n`, store one `uint32_t`
+word `w = (uint32_t)(uint16_t)I_q114[n] | ((uint32_t)(uint16_t)Q_q114[n] << 16)` in a
+contiguous array of `N` words (`N * 4` bytes). Cache-clean before DMA. After Lite
+config + `CTRL.ARM`, start MM2S with byte length `N*4` and `TLAST` on the final beat.
+Poll `STATUS.DONE` / read `RESULT_*`; `IF_SAMPLE_COUNT` should equal `N` when the
+wrapper wires `sample_count` through. Exact DMA IP (e.g. AXI DMA) is chosen at
+bitstream integration — buffer packing and Stream semantics above are frozen.
 
 **FIR policy (frozen for Phase 4):** FIR coefficients and `NUM_TAPS` / `DECIM_M` stay
 **compile-time / on-chip ROM** matching Phase 2 fixture quantization. They are **not**

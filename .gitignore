@@ -38,5 +38,6 @@ xsim_fir/
 xsim_integration/
 xsim_state_discrim/
 xsim_readout_chain/
+xsim_axis_if_ingress/
 .Xil/
 hd_visual/

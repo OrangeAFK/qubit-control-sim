@@ -25,5 +25,9 @@ script, and run instructions (`hdl/vivado/sim_state_discrim.tcl`).
 ## Phase 3 — Top-level readout chain
 
 See [`readout_chain/`](readout_chain/) for `tb_readout_chain.sv`, fixture export
-script, and run instructions (`hdl/vivado/sim_readout_chain.tcl`). TB-only until
-human review; `hdl/rtl/readout_chain/readout_chain.v` is an empty shell.
+script, and run instructions (`hdl/vivado/sim_readout_chain.tcl`).
+
+## Phase 4 — AXI-Stream IF ingress
+
+See [`axi_interface/`](axi_interface/) for `tb_axis_if_ingress.sv` and
+`hdl/vivado/sim_axis_if_ingress.tcl` (reuses `readout_chain/vectors/`).
