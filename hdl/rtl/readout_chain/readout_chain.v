@@ -1,20 +1,17 @@
 // =============================================================================
-// readout_chain — empty shell for TB elaborate only (NO structural wiring yet).
+// readout_chain — structural top: ddc → fir(+decim) → integration → state_discrim
 //
-// Intended contract (docs/fixed_point_notes.md § readout_chain):
+// Port / Q-format contract (docs/fixed_point_notes.md § readout_chain):
 //   in_i / in_q   : signed Q1.14 IF IQ (sim AXI-Stream style)
 //   phase_inc/0   : NCO words (same as ddc)
 //   threshold     : signed Q12.14 (same as state_discrim)
-//   out_i / out_q : signed Q12.14 integrated IQ
-//   decision      : 1-bit state (bit-exact vs fixture)
-//   out_valid     : one-cycle pulse when integrated IQ + decision are ready
+//   out_i / out_q : signed Q12.14 integrated IQ (held from integration)
+//   decision      : 1-bit state (from state_discrim)
+//   out_valid     : one-cycle pulse when IQ + decision are ready
+//                   (aligned to state_discrim; IQ held from prior integration pulse)
 //
-// Future DUT (after TB review): structural
-//   ddc → fir(+decim) → integration → state_discrim
-// with parameters NUM_TAPS / DECIM_M / INTEGRATE_* matching Phase 2 fixtures.
-//
-// This shell never asserts out_valid so tb_readout_chain times out FAIL
-// until real chain wiring replaces it after TB review.
+// After the last IF sample, hold in_valid=0 so FIR flush (zero-pad) can finish
+// and integration can collect the full post-decim window.
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -33,31 +30,98 @@ module readout_chain #(
     input  wire        [31:0] phase_inc,   // f_lo/fs * 2^32
     input  wire        [31:0] phase0,      // phase0_rad/(2π) * 2^32
     input  wire signed [31:0] threshold,   // Q12.14
-    output reg                out_valid,   // pulse: IQ + decision ready
-    output reg  signed [31:0] out_i,       // Q12.14 integrated I
-    output reg  signed [31:0] out_q,       // Q12.14 integrated Q
-    output reg                decision     // 1-bit state
+    output wire               out_valid,   // pulse: IQ + decision ready
+    output wire signed [31:0] out_i,       // Q12.14 integrated I
+    output wire signed [31:0] out_q,       // Q12.14 integrated Q
+    output wire               decision     // 1-bit state
 );
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            out_valid <= 1'b0;
-            out_i     <= 32'sd0;
-            out_q     <= 32'sd0;
-            decision  <= 1'b0;
-        end else begin
-            // Empty shell: never complete a chain result.
-            // (ports / parameters intentionally unused until structural DUT)
-            out_valid <= 1'b0;
-            out_i     <= 32'sd0;
-            out_q     <= 32'sd0;
-            decision  <= 1'b0;
-        end
-    end
+    // -------------------------------------------------------------------------
+    // Stage 1: DDC (NCO mixer) — Q1.14 IF → Q1.14 baseband
+    // -------------------------------------------------------------------------
+    wire               ddc_valid;
+    wire signed [15:0] ddc_i;
+    wire signed [15:0] ddc_q;
 
-    // Silence unused-port / unused-parameter warnings until real wiring lands.
-    wire _unused = &{1'b0, in_valid, in_i[0], in_q[0], phase_inc[0], phase0[0],
-                     threshold[0], NUM_TAPS[0], DECIM_M[0],
-                     INTEGRATE_START[0], INTEGRATE_LENGTH[0]};
+    ddc u_ddc (
+        .clk       (clk),
+        .rst_n     (rst_n),
+        .in_valid  (in_valid),
+        .in_i      (in_i),
+        .in_q      (in_q),
+        .phase_inc (phase_inc),
+        .phase0    (phase0),
+        .out_valid (ddc_valid),
+        .out_i     (ddc_i),
+        .out_q     (ddc_q)
+    );
+
+    // -------------------------------------------------------------------------
+    // Stage 2: FIR LPF + decimation — Q1.14 → Q1.14 @ fs/M
+    // When ddc_valid drops after the last IF sample, fir continues flushing
+    // with zero samples (active sticky) so trailing same-mode taps match.
+    // -------------------------------------------------------------------------
+    wire               fir_valid;
+    wire signed [15:0] fir_i;
+    wire signed [15:0] fir_q;
+
+    fir #(
+        .NUM_TAPS (NUM_TAPS),
+        .DECIM_M  (DECIM_M)
+    ) u_fir (
+        .clk       (clk),
+        .rst_n     (rst_n),
+        .in_valid  (ddc_valid),
+        .in_i      (ddc_i),
+        .in_q      (ddc_q),
+        .out_valid (fir_valid),
+        .out_i     (fir_i),
+        .out_q     (fir_q)
+    );
+
+    // -------------------------------------------------------------------------
+    // Stage 3: Integration window — Q1.14 → Q12.14
+    // -------------------------------------------------------------------------
+    wire               int_valid;
+    wire signed [31:0] int_i;
+    wire signed [31:0] int_q;
+
+    integration #(
+        .INTEGRATE_START  (INTEGRATE_START),
+        .INTEGRATE_LENGTH (INTEGRATE_LENGTH)
+    ) u_integration (
+        .clk       (clk),
+        .rst_n     (rst_n),
+        .in_valid  (fir_valid),
+        .in_i      (fir_i),
+        .in_q      (fir_q),
+        .out_valid (int_valid),
+        .out_i     (int_i),
+        .out_q     (int_q)
+    );
+
+    // -------------------------------------------------------------------------
+    // Stage 4: State discrimination — Q12.14 I vs threshold → 1-bit
+    // -------------------------------------------------------------------------
+    wire sd_valid;
+    wire sd_decision;
+
+    state_discrim u_state_discrim (
+        .clk       (clk),
+        .rst_n     (rst_n),
+        .in_valid  (int_valid),
+        .in_i      (int_i),
+        .in_q      (int_q),
+        .threshold (threshold),
+        .out_valid (sd_valid),
+        .decision  (sd_decision)
+    );
+
+    // Chain outputs: IQ held by integration after its window pulse; decision /
+    // out_valid aligned to state_discrim (one cycle after integration).
+    assign out_i     = int_i;
+    assign out_q     = int_q;
+    assign out_valid = sd_valid;
+    assign decision  = sd_decision;
 
 endmodule

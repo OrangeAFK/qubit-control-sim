@@ -3,6 +3,7 @@
 # Prerequisites
 #   - Vivado settings script sourced so xvlog/xelab/xsim are on PATH
 #   - Vectors present under hdl/tb/readout_chain/vectors/ (run export_fixtures.py)
+#   - FIR coeff ROM at hdl/tb/fir/vectors/fir_coeffs.mem (staged into work dir)
 #
 # From repo root (Windows example after settings64.bat)::
 #
@@ -15,8 +16,13 @@
 set script_dir [file dirname [file normalize [info script]]]
 set repo_root  [file normalize [file join $script_dir .. ..]]
 set rtl_rc     [file join $repo_root hdl rtl readout_chain readout_chain.v]
+set rtl_ddc    [file join $repo_root hdl rtl ddc ddc.v]
+set rtl_fir    [file join $repo_root hdl rtl fir fir.v]
+set rtl_int    [file join $repo_root hdl rtl integration integration.v]
+set rtl_sd     [file join $repo_root hdl rtl state_discrim state_discrim.v]
 set tb_sv      [file join $repo_root hdl tb readout_chain tb_readout_chain.sv]
 set vec_dir    [file join $repo_root hdl tb readout_chain vectors]
+set fir_vec    [file join $repo_root hdl tb fir vectors]
 set work_dir   [file join $repo_root hdl vivado xsim_readout_chain]
 
 puts "repo_root = $repo_root"
@@ -27,9 +33,11 @@ if {![file isfile [file join $vec_dir readout_chain_params.svh]]} {
   puts "Run:  python hdl/tb/readout_chain/export_fixtures.py"
   exit 1
 }
-if {![file isfile $rtl_rc]} {
-  puts "ERROR: missing DUT/shell $rtl_rc"
-  exit 1
+foreach f [list $rtl_rc $rtl_ddc $rtl_fir $rtl_int $rtl_sd] {
+  if {![file isfile $f]} {
+    puts "ERROR: missing RTL $f"
+    exit 1
+  }
 }
 if {![file isfile $tb_sv]} {
   puts "ERROR: missing testbench $tb_sv"
@@ -39,16 +47,33 @@ if {![file isfile $tb_sv]} {
 file mkdir $work_dir
 cd $work_dir
 
+# Coeff ROM for fir $readmemh("fir_coeffs.mem") — cwd is work_dir
+set coeff_src [file join $fir_vec fir_coeffs.mem]
+if {![file isfile $coeff_src]} {
+  puts "ERROR: missing $coeff_src"
+  puts "Run:  python hdl/tb/fir/export_fixtures.py"
+  exit 1
+}
+file copy -force $coeff_src [file join $work_dir fir_coeffs.mem]
+
 # Fresh compile each run
 foreach leftover {xsim.dir xvlog.pb xelab.pb xsim_*.jou xsim_*.log} {
   catch {file delete -force {*}[glob -nocomplain $leftover]}
 }
 
-set rtl_rc_dir [file join $repo_root hdl rtl readout_chain]
+set rtl_rc_dir  [file join $repo_root hdl rtl readout_chain]
+set rtl_ddc_dir [file join $repo_root hdl rtl ddc]
+set rtl_fir_dir [file join $repo_root hdl rtl fir]
 
 puts "=== xvlog ==="
 set rc [catch {
-  exec xvlog -sv -i $vec_dir -i $rtl_rc_dir $rtl_rc $tb_sv >@stdout 2>@stderr
+  exec xvlog -sv \
+    -i $vec_dir \
+    -i $rtl_rc_dir \
+    -i $rtl_ddc_dir \
+    -i $rtl_fir_dir \
+    $rtl_ddc $rtl_fir $rtl_int $rtl_sd $rtl_rc $tb_sv \
+    >@stdout 2>@stderr
 } err]
 if {$rc != 0} {
   puts "xvlog failed: $err"
@@ -88,7 +113,7 @@ if {$passed} {
   exit 0
 }
 
-puts "xsim did not report ALL CASES PASSED (expected until real readout_chain RTL exists)."
+puts "xsim did not report ALL CASES PASSED."
 if {$rc != 0} {
   puts "$err"
 }
