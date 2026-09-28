@@ -62,25 +62,26 @@ Linux / Git Bash equivalent: `source <Vivado>/settings64.sh` then the same
 4. Writes utilization + timing summary under `out_cora_readout/` and copies a
    combined report into `docs/reports/`.
 
-### Latest checked-in run (2026-09-27 BRAM FIR, Vivado 2025.1)
+### Latest checked-in run (2026-09-27 product-pipe FIR, Vivado 2025.1)
 
-Real OOC synth+impl of `cora_readout_pl` on `xc7z007sclg400-1` after BRAM
-circular-delay FIR (1 tap/cycle × 16 engines, 16× RAMB18) + 4-stage DDC:
+Real OOC synth+impl of `cora_readout_pl` on `xc7z007sclg400-1` after FIR
+registered-product MAC (BRAM → product reg → acc, 17 engines / RAMB18) +
+4-stage DDC:
 
 | metric | value |
 |--------|--------|
-| Slice LUTs | 6438 / 14400 (45%) |
-| Slice Registers | 2809 / 28800 (10%) |
-| Block RAM (RAMB18) | 16 / 100 (16%) |
-| DSP48E1 | 40 / 66 (61%) |
-| Timing @ 100 MHz | **not met** — WNS −4.524 ns (BRAM→DSP→sat) |
-| Suggested PL clock | **50 MHz** (from WNS; Fmax ≈ 69 MHz) |
+| Slice LUTs | 6902 / 14400 (48%) |
+| Slice Registers | 2985 / 28800 (10%) |
+| Block RAM (RAMB18) | 17 / 100 (17%) |
+| DSP48E1 | 42 / 66 (64%) |
+| Timing @ 100 MHz | **not met** — WNS −2.464 ns (critical: DDC NCO interp) |
+| Suggested PL clock | **50 MHz** (from WNS; Fmax ≈ 80 MHz) |
 
-Prior: pipelined snap-mux WNS −5.597 ns (`…_pipelined*`); pre-pipeline
-WNS −16.889 ns (`…_pre_pipeline*`). Latest same-day copies:
-`phase4_readout_2026-09-27_bram*` and
-`phase4_readout_2026-09-27.{txt,_timing.rpt,_utilization.rpt}`. This is
-**not** a board bitstream and does **not** claim on-hardware match.
+Prior same-day: BRAM FIR WNS −4.524 ns (`…_bram*`); pipelined snap-mux
+−5.597 ns (`…_pipelined*`); pre-pipeline −16.889 ns (`…_pre_pipeline*`).
+Latest: `phase4_readout_2026-09-27_productpipe*` (and untagged
+`phase4_readout_2026-09-27.{txt,_timing.rpt,_utilization.rpt}` from the same
+run). This is **not** a board bitstream and does **not** claim on-hardware match.
 
 ### Out of scope
 

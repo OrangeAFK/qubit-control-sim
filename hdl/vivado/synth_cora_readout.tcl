@@ -99,8 +99,10 @@ place_design
 puts "=== route_design ==="
 route_design
 
-# Timestamp for report names (UTC date)
-set date_str [clock format [clock seconds] -format "%Y-%m-%d"]
+# Timestamp + optional tag so iterative timing experiments do not clobber
+# prior same-day reports (e.g. _bram, _productpipe).
+set date_str   [clock format [clock seconds] -format "%Y-%m-%d"]
+set rpt_suffix "_productpipe"
 
 set util_rpt   [file join $out_dir utilization.rpt]
 set timing_rpt [file join $out_dir timing_summary.rpt]
@@ -115,13 +117,14 @@ puts "=== write_checkpoint ==="
 write_checkpoint -force $dcp
 
 # Combined human-facing report under docs/reports/
-set docs_combined [file join $docs_rpt "phase4_readout_${date_str}.txt"]
+set docs_combined [file join $docs_rpt "phase4_readout_${date_str}${rpt_suffix}.txt"]
 set fh [open $docs_combined w]
 puts $fh "Phase 4 Cora Z7-07S readout PL — Vivado non-project synth+impl"
 puts $fh "Generated: [clock format [clock seconds]]"
 puts $fh "Part: $part"
 puts $fh "Top:  $top"
 puts $fh "Flow: hdl/vivado/synth_cora_readout.tcl"
+puts $fh "Tag:  $rpt_suffix"
 puts $fh "DCP:  $dcp"
 puts $fh ""
 puts $fh "========== utilization.rpt =========="
@@ -136,13 +139,13 @@ close $tf
 close $fh
 
 # Also keep native-named copies in docs/reports
-file copy -force $util_rpt   [file join $docs_rpt "phase4_readout_${date_str}_utilization.rpt"]
-file copy -force $timing_rpt [file join $docs_rpt "phase4_readout_${date_str}_timing.rpt"]
+file copy -force $util_rpt   [file join $docs_rpt "phase4_readout_${date_str}${rpt_suffix}_utilization.rpt"]
+file copy -force $timing_rpt [file join $docs_rpt "phase4_readout_${date_str}${rpt_suffix}_timing.rpt"]
 
 puts "OK: reports written:"
 puts "  $docs_combined"
-puts "  [file join $docs_rpt phase4_readout_${date_str}_utilization.rpt]"
-puts "  [file join $docs_rpt phase4_readout_${date_str}_timing.rpt]"
+puts "  [file join $docs_rpt phase4_readout_${date_str}${rpt_suffix}_utilization.rpt]"
+puts "  [file join $docs_rpt phase4_readout_${date_str}${rpt_suffix}_timing.rpt]"
 puts "  $util_rpt"
 puts "  $timing_rpt"
 puts "  $dcp"

@@ -15,15 +15,16 @@ under `docs/reports/phase4_readout_2026-09-27*` as board bring-up success.
 2. **Need a Zynq PS BD** that maps AXI-Lite to the frozen readout aperture
    (`BASE_ADDR_TENTATIVE` in `axi_lite_regs.py` / ARCHITECTURE.md §3.3.1) and an
    AXIS MM2S (or equivalent) path to feed IF samples from Phase 2/3 fixtures.
-3. **Timing does not meet 100 MHz today.** After BRAM circular-delay FIR
-   (serial MAC × 16 engines) + 4-stage DDC, routed WNS ≈ **−4.524 ns** (was
-   −5.6 ns pipelined / −16.9 ns pre-pipeline), DSP48E1 **40/66 (61%)**,
-   RAMB18 **16/100**, LUTs **45%**, FFs **10%**. Critical path is now
-   BRAM dout → DSP → accumulate → sat under one cycle. Estimated Fmax ≈
-   **1/(10 + 4.524) ns ≈ 68.8 MHz**. Recommended PL clock until a product
-   pipeline stage is added: **50 MHz** (20 ns period, ~5.5 ns margin vs
-   measured path) or **62.5 MHz** if accepting a thin margin. See
-   `docs/reports/phase4_readout_2026-09-27_bram*`.
+3. **Timing does not meet 100 MHz today.** After FIR registered-product pipe
+   (BRAM → DSP product reg → acc, 17 engines / RAMB18) + 4-stage DDC, routed
+   WNS ≈ **−2.464 ns** (was −4.524 ns BRAM FIR / −5.6 ns pipelined snap-mux /
+   −16.9 ns pre-pipeline), DSP48E1 **42/66 (64%)**, RAMB18 **17/100**, LUTs
+   **48%**, FFs **10%**. Critical path is now **DDC** NCO interp
+   (`frac_s1` → dual DSP interp → carry → `cos_nco`/`sin_nco`), not FIR MAC.
+   Estimated Fmax ≈ **1/(10 + 2.464) ns ≈ 80.2 MHz**. Recommended PL clock
+   until DDC interp is further pipelined: **50 MHz** (20 ns period, ~7.5 ns
+   margin vs measured path) or **62.5 MHz** if accepting a thinner margin. See
+   `docs/reports/phase4_readout_2026-09-27_productpipe*`.
 4. **`MmioBackend` / DMA push are stubs.** `ReadoutDriver` works end-to-end under
    `MockBackend` in pytest; board MMIO + DMA wiring is still future work.
 
@@ -110,7 +111,8 @@ fixtures — not that hardware ran.
 | Artifact | Meaning |
 | -------- | ------- |
 | `docs/reports/phase4_readout_2026-09-27*` | Real OOC util/timing — **not** on-HW |
-| `…_bram*` | Latest: BRAM FIR, WNS −4.524 ns @ 100 MHz |
+| `…_productpipe*` | Latest: FIR product pipe, WNS −2.464 ns @ 100 MHz (DDC-critical) |
+| `…_bram*` | Prior: BRAM FIR, WNS −4.524 ns @ 100 MHz |
 | `hdl/vivado/synth_cora_readout.tcl` | OOC PL synth+impl |
 | `python/cryocontrol/hardware/` | Driver + mock/MMIO stub |
 | `python/cryocontrol/dsp_ref/fixtures/` | Golden IF + integrated IQ + decisions |

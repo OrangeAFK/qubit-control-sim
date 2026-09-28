@@ -10,11 +10,11 @@
 //
 // Timing (xc7z007s @ 100 MHz):
 //   - Circular delay line in per-engine block RAM (I/Q packed). Depth is
-//     128 so in-flight MACs are not overwritten by new writes. Removes flop
-//     snapshot arrays + wide tap muxes (~96% slice congestion previously).
+//     128 so in-flight MACs are not overwritten by new writes.
 //   - On emit: bind wr_ptr as base; serial MAC (TAPS_PER_CYCLE=1) with
-//     registered BRAM read → DSP → accumulate.
-//   - NUM_ENGINES = ceil((NUM_TAPS+1)/DECIM_M) covers BRAM warmup + taps.
+//     BRAM read → registered DSP product → accumulate (breaks BRAM→DSP→sat).
+//   - NUM_ENGINES = ceil((NUM_TAPS+2)/DECIM_M) covers BRAM warmup + taps +
+//     one post-product accumulate cycle.
 //   - Round/sat is a registered cycle after the final accumulate.
 //
 // Q-format: docs/fixed_point_notes.md § fir
@@ -42,7 +42,8 @@ module fir #(
     localparam integer L            = (NUM_TAPS - 1) / 2;
     localparam integer ACC_W        = 40;
     localparam integer IDX_W        = 16;
-    localparam integer BUSY_CYCLES  = NUM_TAPS + 1;
+    // BRAM warmup + NUM_TAPS product regs + 1 final accumulate after last product
+    localparam integer BUSY_CYCLES  = NUM_TAPS + 2;
     localparam integer NUM_ENGINES  = (BUSY_CYCLES + DECIM_M - 1) / DECIM_M;
     localparam integer MEM_DEPTH    = 128;
     localparam integer PTR_W        = $clog2(MEM_DEPTH);
@@ -77,18 +78,24 @@ module fir #(
                 && (sample_idx >= IDX_W'(L))
                 && (((sample_idx - IDX_W'(L)) % DECIM_M) == 0);
 
-    reg               eng_busy      [0:NUM_ENGINES-1];
-    reg               eng_live      [0:NUM_ENGINES-1];
-    reg [PHASE_W-1:0] eng_phase     [0:NUM_ENGINES-1];
-    reg [PTR_W-1:0]   eng_base      [0:NUM_ENGINES-1];
-    reg [PTR_W-1:0]   eng_rd_addr   [0:NUM_ENGINES-1];
-    reg [IDX_W-1:0]   eng_fill      [0:NUM_ENGINES-1];
+    reg               eng_busy       [0:NUM_ENGINES-1];
+    reg               eng_samp_valid [0:NUM_ENGINES-1];
+    reg [PHASE_W-1:0] eng_phase      [0:NUM_ENGINES-1];
+    reg [PTR_W-1:0]   eng_base       [0:NUM_ENGINES-1];
+    reg [PTR_W-1:0]   eng_rd_addr    [0:NUM_ENGINES-1];
+    reg [IDX_W-1:0]   eng_fill       [0:NUM_ENGINES-1];
     reg signed [ACC_W-1:0] eng_acc_i [0:NUM_ENGINES-1];
     reg signed [ACC_W-1:0] eng_acc_q [0:NUM_ENGINES-1];
+    reg               eng_acc_has    [0:NUM_ENGINES-1];
 
-    reg [31:0]        eng_mem_out   [0:NUM_ENGINES-1];
-    reg               eng_bypass    [0:NUM_ENGINES-1];
-    reg [31:0]        eng_bypass_d  [0:NUM_ENGINES-1];
+    reg signed [31:0] eng_prod_i     [0:NUM_ENGINES-1];
+    reg signed [31:0] eng_prod_q     [0:NUM_ENGINES-1];
+    reg               eng_prod_valid [0:NUM_ENGINES-1];
+    reg               eng_prod_last  [0:NUM_ENGINES-1];
+
+    reg [31:0]        eng_mem_out    [0:NUM_ENGINES-1];
+    reg               eng_bypass     [0:NUM_ENGINES-1];
+    reg [31:0]        eng_bypass_d   [0:NUM_ENGINES-1];
 
     reg [ENG_W-1:0] next_eng;
 
@@ -155,8 +162,8 @@ module fir #(
         for (e = 0; e < NUM_ENGINES; e = e + 1) begin
             will_start[e] = 1'b0;
             next_rd[e]    = eng_rd_addr[e];
-            finishing[e]  = eng_busy[e] && eng_live[e]
-                            && (eng_phase[e] == PHASE_W'(NUM_TAPS - 1));
+            // Free on the cycle that folds the last registered product into acc.
+            finishing[e]  = eng_busy[e] && eng_prod_valid[e] && eng_prod_last[e];
         end
 
         do_start  = process && emit;
@@ -174,9 +181,10 @@ module fir #(
 
         for (e = 0; e < NUM_ENGINES; e = e + 1) begin
             if (eng_busy[e] && !will_start[e]) begin
-                if (!eng_live[e])
+                if (!eng_samp_valid[e])
+                    // Warmup: tap-0 read issued at start; request tap 1 now.
                     next_rd[e] = sub_mod(eng_base[e], 1);
-                else if (!finishing[e])
+                else if (eng_phase[e] != PHASE_W'(NUM_TAPS - 1))
                     next_rd[e] = sub_mod(eng_base[e], eng_phase[e] + 1);
             end
         end
@@ -195,16 +203,21 @@ module fir #(
             sat_acc_i   <= {ACC_W{1'b0}};
             sat_acc_q   <= {ACC_W{1'b0}};
             for (e = 0; e < NUM_ENGINES; e = e + 1) begin
-                eng_busy[e]     <= 1'b0;
-                eng_live[e]     <= 1'b0;
-                eng_phase[e]    <= {PHASE_W{1'b0}};
-                eng_base[e]     <= {PTR_W{1'b0}};
-                eng_rd_addr[e]  <= {PTR_W{1'b0}};
-                eng_fill[e]     <= {IDX_W{1'b0}};
-                eng_acc_i[e]    <= {ACC_W{1'b0}};
-                eng_acc_q[e]    <= {ACC_W{1'b0}};
-                eng_bypass[e]   <= 1'b0;
-                eng_bypass_d[e] <= 32'd0;
+                eng_busy[e]       <= 1'b0;
+                eng_samp_valid[e] <= 1'b0;
+                eng_phase[e]      <= {PHASE_W{1'b0}};
+                eng_base[e]       <= {PTR_W{1'b0}};
+                eng_rd_addr[e]    <= {PTR_W{1'b0}};
+                eng_fill[e]       <= {IDX_W{1'b0}};
+                eng_acc_i[e]      <= {ACC_W{1'b0}};
+                eng_acc_q[e]      <= {ACC_W{1'b0}};
+                eng_acc_has[e]    <= 1'b0;
+                eng_prod_i[e]     <= 32'sd0;
+                eng_prod_q[e]     <= 32'sd0;
+                eng_prod_valid[e] <= 1'b0;
+                eng_prod_last[e]  <= 1'b0;
+                eng_bypass[e]     <= 1'b0;
+                eng_bypass_d[e]   <= 32'd0;
             end
         end else begin
             out_valid     <= 1'b0;
@@ -222,34 +235,29 @@ module fir #(
 
             for (e = 0; e < NUM_ENGINES; e = e + 1) begin
                 if (eng_busy[e]) begin
-                    if (IDX_W'(eng_phase[e]) >= eng_fill[e]) begin
-                        prod_i = 32'sd0;
-                        prod_q = 32'sd0;
-                    end else begin
-                        sample_w = eng_bypass[e] ? eng_bypass_d[e] : eng_mem_out[e];
-                        samp_i   = sample_w[15:0];
-                        samp_q   = sample_w[31:16];
-                        prod_i   = samp_i * coeffs[eng_phase[e]];
-                        prod_q   = samp_q * coeffs[eng_phase[e]];
-                    end
+                    // --- Accumulate stage: fold prior registered product ---
+                    // Runs even on will_start so a same-cycle restart still
+                    // retires the previous MAC into sat_pending.
+                    if (eng_prod_valid[e]) begin
+                        if (!eng_acc_has[e]) begin
+                            sum_i = {{(ACC_W-32){eng_prod_i[e][31]}}, eng_prod_i[e]};
+                            sum_q = {{(ACC_W-32){eng_prod_q[e][31]}}, eng_prod_q[e]};
+                        end else begin
+                            sum_i = eng_acc_i[e]
+                                    + {{(ACC_W-32){eng_prod_i[e][31]}}, eng_prod_i[e]};
+                            sum_q = eng_acc_q[e]
+                                    + {{(ACC_W-32){eng_prod_q[e][31]}}, eng_prod_q[e]};
+                        end
 
-                    if (!eng_live[e]) begin
-                        eng_live[e]  <= 1'b1;
-                        eng_acc_i[e] <= {{(ACC_W-32){prod_i[31]}}, prod_i};
-                        eng_acc_q[e] <= {{(ACC_W-32){prod_q[31]}}, prod_q};
-                        eng_phase[e] <= PHASE_W'(1);
-                    end else begin
-                        sum_i = eng_acc_i[e]
-                                + {{(ACC_W-32){prod_i[31]}}, prod_i};
-                        sum_q = eng_acc_q[e]
-                                + {{(ACC_W-32){prod_q[31]}}, prod_q};
-
-                        if (finishing[e]) begin
-                            eng_busy[e]  <= 1'b0;
-                            eng_live[e]  <= 1'b0;
-                            eng_phase[e] <= {PHASE_W{1'b0}};
-                            eng_acc_i[e] <= {ACC_W{1'b0}};
-                            eng_acc_q[e] <= {ACC_W{1'b0}};
+                        if (eng_prod_last[e]) begin
+                            eng_busy[e]       <= 1'b0;
+                            eng_samp_valid[e] <= 1'b0;
+                            eng_phase[e]      <= {PHASE_W{1'b0}};
+                            eng_acc_i[e]      <= {ACC_W{1'b0}};
+                            eng_acc_q[e]      <= {ACC_W{1'b0}};
+                            eng_acc_has[e]    <= 1'b0;
+                            eng_prod_valid[e] <= 1'b0;
+                            eng_prod_last[e]  <= 1'b0;
                             if (!mac_out_taken && !sat_pending) begin
                                 sat_acc_i     <= sum_i;
                                 sat_acc_q     <= sum_q;
@@ -257,21 +265,75 @@ module fir #(
                                 mac_out_taken = 1'b1;
                             end
                         end else begin
-                            eng_acc_i[e] <= sum_i;
-                            eng_acc_q[e] <= sum_q;
-                            eng_phase[e] <= eng_phase[e] + 1'b1;
+                            eng_acc_i[e]      <= sum_i;
+                            eng_acc_q[e]      <= sum_q;
+                            eng_acc_has[e]    <= 1'b1;
+                            // Keep prod_valid high while streaming; overwritten
+                            // below when a new product is issued, else clear.
+                            eng_prod_valid[e] <= 1'b0;
+                        end
+                    end
+
+                    // --- Product stage: BRAM dout × coeff → product reg ---
+                    if (!will_start[e] && !(eng_prod_valid[e] && eng_prod_last[e])) begin
+                        if (!eng_samp_valid[e]) begin
+                            // First BRAM sample (addr issued at will_start).
+                            eng_samp_valid[e] <= 1'b1;
+                            eng_phase[e]      <= PHASE_W'(1);
+                            if (IDX_W'(0) >= eng_fill[e]) begin
+                                prod_i = 32'sd0;
+                                prod_q = 32'sd0;
+                            end else begin
+                                sample_w = eng_bypass[e] ? eng_bypass_d[e]
+                                                         : eng_mem_out[e];
+                                samp_i   = sample_w[15:0];
+                                samp_q   = sample_w[31:16];
+                                prod_i   = samp_i * coeffs[0];
+                                prod_q   = samp_q * coeffs[0];
+                            end
+                            eng_prod_i[e]     <= prod_i;
+                            eng_prod_q[e]     <= prod_q;
+                            eng_prod_valid[e] <= 1'b1;
+                            eng_prod_last[e]  <= 1'b0;
+                        end else begin
+                            // Taps 1 .. NUM_TAPS-1; eng_phase is the tap index.
+                            if (IDX_W'(eng_phase[e]) >= eng_fill[e]) begin
+                                prod_i = 32'sd0;
+                                prod_q = 32'sd0;
+                            end else begin
+                                sample_w = eng_bypass[e] ? eng_bypass_d[e]
+                                                         : eng_mem_out[e];
+                                samp_i   = sample_w[15:0];
+                                samp_q   = sample_w[31:16];
+                                prod_i   = samp_i * coeffs[eng_phase[e]];
+                                prod_q   = samp_q * coeffs[eng_phase[e]];
+                            end
+                            eng_prod_i[e]     <= prod_i;
+                            eng_prod_q[e]     <= prod_q;
+                            eng_prod_valid[e] <= 1'b1;
+                            eng_prod_last[e]  <= (eng_phase[e]
+                                                  == PHASE_W'(NUM_TAPS - 1));
+                            if (eng_phase[e] == PHASE_W'(NUM_TAPS - 1)) begin
+                                eng_samp_valid[e] <= 1'b0;
+                                eng_phase[e]      <= {PHASE_W{1'b0}};
+                            end else begin
+                                eng_phase[e] <= eng_phase[e] + 1'b1;
+                            end
                         end
                     end
                 end
 
                 if (will_start[e]) begin
-                    eng_busy[e]  <= 1'b1;
-                    eng_live[e]  <= 1'b0;
-                    eng_phase[e] <= {PHASE_W{1'b0}};
-                    eng_base[e]  <= wr_ptr;
-                    eng_fill[e]  <= sample_idx + 1'b1;
-                    eng_acc_i[e] <= {ACC_W{1'b0}};
-                    eng_acc_q[e] <= {ACC_W{1'b0}};
+                    eng_busy[e]       <= 1'b1;
+                    eng_samp_valid[e] <= 1'b0;
+                    eng_phase[e]      <= {PHASE_W{1'b0}};
+                    eng_base[e]       <= wr_ptr;
+                    eng_fill[e]       <= sample_idx + 1'b1;
+                    eng_acc_i[e]      <= {ACC_W{1'b0}};
+                    eng_acc_q[e]      <= {ACC_W{1'b0}};
+                    eng_acc_has[e]    <= 1'b0;
+                    eng_prod_valid[e] <= 1'b0;
+                    eng_prod_last[e]  <= 1'b0;
                 end
             end
 

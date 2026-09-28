@@ -96,13 +96,13 @@ absolute error ≤ **8 LSB** on I and on Q after the DUT pipeline latency / firs
 
 **Architecture (Phase 4 timing):** multi-cycle MAC over a **block-RAM circular
 delay** (per-engine replicas, I/Q packed, depth 128 so in-flight MACs are not
-overwritten). On each decimation emit, bind `wr_ptr` as base and accumulate
-**one** tap/cycle (`TAPS_PER_CYCLE=1`) with registered BRAM read → DSP → acc
-over **63** product cycles (+1 BRAM warmup). Emit period `M=4` needs
-`ceil(64/4)=16` engines. Taps beyond samples-since-reset contribute 0 (BRAM is
-not cleared on `rst_n`). Round/sat is a registered cycle after the final
-accumulate. Extra `out_valid` latency is ~`NUM_TAPS+2` clocks; TBs already
-allow DUT pipeline latency. Same Q-format / round-nearest / saturate.
+overwritten). On each decimation emit, bind `wr_ptr` as base and run a serial
+MAC (`TAPS_PER_CYCLE=1`): BRAM read → **registered DSP product** → accumulate
+over **63** product cycles (+1 BRAM warmup +1 post-product accumulate). Emit
+period `M=4` needs `ceil(65/4)=17` engines. Taps beyond samples-since-reset
+contribute 0 (BRAM is not cleared on `rst_n`). Round/sat is a registered cycle
+after the final accumulate. Extra `out_valid` latency is ~`NUM_TAPS+3` clocks;
+TBs already allow DUT pipeline latency. Same Q-format / round-nearest / saturate.
 
 ---
 
