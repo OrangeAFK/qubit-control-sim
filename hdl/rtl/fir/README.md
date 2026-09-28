@@ -13,5 +13,6 @@ Decimation **M = 4** is part of this stage (keep every M-th filtered sample).
 Coeffs: `hdl/tb/fir/vectors/fir_coeffs.mem` (Q1.14), copied into the xsim work
 dir by `hdl/vivado/sim_fir.tcl`.
 
-**MAC:** snapshot on emit; `TAPS_PER_CYCLE=2` over 32 cycles; 8 engines
-(emit period M=4). Round/sat registered after final accumulate.
+**MAC:** BRAM circular delay (per-engine replicas); serial tap (`TAPS_PER_CYCLE=1`)
+over 63 cycles + 1 BRAM warmup; 16 engines (emit period M=4). Round/sat
+registered after final accumulate.

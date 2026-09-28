@@ -94,15 +94,15 @@ Per-sample module-TB compare (vs quantized `decimate(apply_fir(dsp_ref.ddc(IF)))
 absolute error ≤ **8 LSB** on I and on Q after the DUT pipeline latency / first
 `out_valid`.
 
-**Architecture (Phase 4 timing):** multi-cycle MAC with per-emit tap snapshots.
-Delay line shifts one sample per `in_valid`/`flush` cycle. On each decimation
-emit, snapshot the tap vector into a free engine and accumulate
-`TAPS_PER_CYCLE` products per clock (default **2**) over
-`ceil(NUM_TAPS/TAPS_PER_CYCLE)` cycles (**32** for 63 taps). Emit period `M=4`
-needs `ceil(32/4)=8` engines for throughput. Round/sat is a registered cycle
-after the final accumulate. Extra `out_valid` latency is ~`MAC_CYCLES+1`
-clocks; TBs already allow DUT pipeline latency. Same Q-format / round-nearest /
-saturate.
+**Architecture (Phase 4 timing):** multi-cycle MAC over a **block-RAM circular
+delay** (per-engine replicas, I/Q packed, depth 128 so in-flight MACs are not
+overwritten). On each decimation emit, bind `wr_ptr` as base and accumulate
+**one** tap/cycle (`TAPS_PER_CYCLE=1`) with registered BRAM read → DSP → acc
+over **63** product cycles (+1 BRAM warmup). Emit period `M=4` needs
+`ceil(64/4)=16` engines. Taps beyond samples-since-reset contribute 0 (BRAM is
+not cleared on `rst_n`). Round/sat is a registered cycle after the final
+accumulate. Extra `out_valid` latency is ~`NUM_TAPS+2` clocks; TBs already
+allow DUT pipeline latency. Same Q-format / round-nearest / saturate.
 
 ---
 
